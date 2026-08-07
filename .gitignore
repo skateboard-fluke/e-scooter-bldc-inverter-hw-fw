@@ -55,4 +55,7 @@ dkms.conf
 *.dwo
 Hardware/.history/
 Firmware/.metadata/
-Hardware/.history/
+
+Firmware/**/Debug/
+Firmware/**/Release/
+Firmware/**/.settings/
