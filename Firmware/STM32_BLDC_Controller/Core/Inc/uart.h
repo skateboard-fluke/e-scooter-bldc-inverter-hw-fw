@@ -8,10 +8,11 @@
 #ifndef INC_UART_H_
 #define INC_UART_H_
 #include "stm32f7xx.h"
+#include "motor_control.h"
 
 void AT09_Init(void);
 void USART3_SendChar(char c);
 char USART3_ReceiveChar(void);
 void UART3_SendFloat_Simple(float value, int decimals);
-
+void Bluetooth_Send_Telemetry_500ms(void);
 #endif /* INC_UART_H_ */

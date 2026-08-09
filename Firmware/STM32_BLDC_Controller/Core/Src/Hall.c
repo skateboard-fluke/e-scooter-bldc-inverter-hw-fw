@@ -5,13 +5,18 @@
  *      Author: kdk78
  */
 
-
 #include "Hall.h"
+
+
 uint32_t ccr_a =0;
 uint32_t ccr_b =0;
 uint32_t ccr_c =0;
 unsigned int dir =1;
 uint8_t StartFlag = 0;
+uint8_t HA = 0;
+uint8_t HB = 0;
+uint8_t HC = 0;
+uint8_t HallSum = 0;
 
 
 void Initialize_Hall_Sensors(void)
@@ -236,6 +241,51 @@ void Unmask_Channel(uint8_t channel)
 			break;
 	}
 }
+
+
+void EXTI0_IRQHandler(void) //PD0 HA
+{
+	if(EXTI->PR & EXTI_PR_PR0)
+	{
+		EXTI->PR = EXTI_PR_PR0; //인터럽트 플래그 클리어
+		Update_Hall_Sequence();
+		SpeedCal();
+	}
+}
+
+void EXTI1_IRQHandler(void) //PD1 HB
+{
+	if(EXTI->PR & EXTI_PR_PR1)
+	{
+		EXTI->PR = EXTI_PR_PR1; //인터럽트 플래그 클리어
+		Update_Hall_Sequence();
+		SpeedCal();
+	}
+}
+void EXTI2_IRQHandler(void) //PD2 HC
+{
+	if(EXTI->PR & EXTI_PR_PR2)
+	{
+		EXTI->PR = EXTI_PR_PR2; //인터럽트 플래그 클리어
+		Update_Hall_Sequence();
+		SpeedCal();
+	}
+}
+
+void Update_Hall_Sequence(void)
+{
+	// PD0, PD1, PD2에서 홀 신호 읽기
+	HA = GPIOD->IDR & GPIO_IDR_IDR_0;
+	HB = GPIOD->IDR & GPIO_IDR_IDR_1;
+	HC = GPIOD->IDR & GPIO_IDR_IDR_2;
+	HallSum = 2*2*HA + 2*HB + HC;
+}
+
+void SpeedCal(void)
+{
+	//
+}
+
 
 
 

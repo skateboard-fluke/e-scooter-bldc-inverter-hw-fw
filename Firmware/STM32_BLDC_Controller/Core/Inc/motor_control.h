@@ -21,7 +21,10 @@ extern float Ki;
 extern volatile float motor_speed_rpm;
 extern uint8_t SpdFlg;
 extern volatile uint32_t voltage_ref;
-
+extern volatile float speed_km_h;
+extern float Vdc;
+extern float MosfetTemp;
+extern uint8_t FltFlg;
 
 
 void Motor_Control_PI_1ms(void);

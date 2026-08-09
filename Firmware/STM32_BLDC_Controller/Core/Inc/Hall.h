@@ -24,4 +24,7 @@ void Update_Swtiching_Pattern(uint8_t Hall_sum);
 void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC);
 void Mask_Channel(uint8_t channel);
 void Unmask_Channel(uint8_t channel);
+void Update_Hall_Sequence(void);
+void SpeedCal(void);
+
 #endif /* INC_HALL_H_ */

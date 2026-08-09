@@ -33,10 +33,7 @@ void SysTick_Init(void)
 					SysTick_CTRL_ENABLE_Msk;		// 카운터 Enable
 }
 
-void SysTick_Handler(void)
-{
-	msTicks++;
-}
+
 
 void Task_1ms(void)
 {
@@ -46,7 +43,24 @@ void Task_1ms(void)
 
 void Task_10ms(void)
 {
+	//
+}
 
+void Task_100ms(void)
+{
+	Task_100msFlg = 0;
+}
+
+
+void Task_500ms(void)
+{
+	Bluetooth_Send_Telemetry_500ms();
+	Task_500msFlg = 0;
+}
+
+void Task_1s(void)
+{
+	Task_1sFlg=0;
 }
 
 void Scheduler(void)

@@ -81,7 +81,7 @@ char USART3_ReceiveChar(void)
 }
 
 
-void UART3_SendFloat_Simple(float value, int decimals)
+void USART3_SendFloat_Simple(float value, int decimals)
 {
     // 1) 부호 처리
     if (value < 0.0f)
@@ -139,6 +139,27 @@ void UART3_SendFloat_Simple(float value, int decimals)
             frac -= (float)digit;  // 소수점 이하 갱신
         }
     }
+}
+
+
+void Bluetooth_Send_Telemetry_500ms(void)
+{
+	// 블루투스 송신
+	USART3_SendString("Spd :");
+	USART3_SendFloat_Simple(speed_km_h, 1);
+	USART3_SendString("\n");
+
+	USART3_SendString("Vdc :");
+	USART3_SendFloat_Simple(Vdc, 1);
+	USART3_SendString("\n");
+
+	USART3_SendString("MosfetTemp :");
+	USART3_SendFloat_Simple(MosfetTemp, 1);
+	USART3_SendString("\n");
+
+	USART3_SendString("Flt :");
+	USART3_SendChar(FltFlg+48);
+	USART3_SendString("\n");
 }
 
 

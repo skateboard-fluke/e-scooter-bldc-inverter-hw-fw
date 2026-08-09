@@ -16,6 +16,11 @@ void System_Monitor_Check_10ms(void)
 
 	ADC1->SQR3 = 0x6U;
 	ADC1->CR2 |= ADC_CR2_SWSTART;
+	//Regular channel end of conversion
+	while(!(ADC1->SR & ADC_SR_EOC)); //EOC 대기
 
+	result = ADC1->DR;
+	//tempLaw = (float)result*ADC_VREF / ADC_FS;
 
+	// 아직 다 안함
 }
