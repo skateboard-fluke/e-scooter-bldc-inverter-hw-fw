@@ -7,6 +7,12 @@
 
 
 #include "Hall.h"
+uint32_t ccr_a =0;
+uint32_t ccr_b =0;
+uint32_t ccr_c =0;
+unsigned int dir =1;
+uint8_t StartFlag = 0;
+
 
 void Initialize_Hall_Sensors(void)
 {
@@ -122,7 +128,7 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 	ccr_c = CNT_MAX - voltage_ref;
 
 	//PhaseA 설정
-	if(VoltageRef==0 || StartFlag==0)
+	if(voltage_ref==0 || StartFlag==0)
 	{
 		Disable_PWM();
 	}
@@ -144,7 +150,7 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 			Mask_Channel(1);
 		}
 	}
-	if(VoltageRef==0 || StartFlag==0)
+	if(voltage_ref==0 || StartFlag==0)
 	{
 		Disable_PWM();
 	}
@@ -166,7 +172,7 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 			Mask_Channel(2);
 		}
 	}
-	if(VoltageRef==0 || StartFlag==0)
+	if(voltage_ref==0 || StartFlag==0)
 	{
 		Disable_PWM();
 	}
@@ -189,6 +195,8 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 		}
 	}
 }
+
+
 
 
 void Mask_Channel(uint8_t channel)

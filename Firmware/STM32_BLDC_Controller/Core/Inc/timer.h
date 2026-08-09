@@ -10,7 +10,6 @@
 
 #include "stm32f7xx.h"
 #define CNT_MAX 5399 // 5400-1
-
-
-
+void Initialize_PWM(void);
+void Initialize_TIM2(void);
 #endif /* INC_TIMER_H_ */
