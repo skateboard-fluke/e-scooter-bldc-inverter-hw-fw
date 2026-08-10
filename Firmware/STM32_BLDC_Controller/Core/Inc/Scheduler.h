@@ -10,6 +10,7 @@
 #include "stm32f7xx.h"
 #include "motor_control.h"
 #include "uart.h"
+#include "system_monitor.h"
 
 void SysTick_Init(void);
 void SysTick_Handler(void);

@@ -43,7 +43,9 @@ void Task_1ms(void)
 
 void Task_10ms(void)
 {
-	//
+	System_Monitor_Check_10ms();
+	UART2_Send_Rpm_Plot_10ms();
+	Task_10msFlg = 0;
 }
 
 void Task_100ms(void)

@@ -17,6 +17,11 @@ uint8_t HA = 0;
 uint8_t HB = 0;
 uint8_t HC = 0;
 uint8_t HallSum = 0;
+static const float Edges_per_Revolution = 1; // 고쳐야 됨
+
+volatile uint32_t last_hall_cnt = 0;
+volatile float calculated_rpm =0.0f;
+volatile uint32_t delta_cnt =0;
 
 
 void Initialize_Hall_Sensors(void)
@@ -283,7 +288,35 @@ void Update_Hall_Sequence(void)
 
 void SpeedCal(void)
 {
-	//
+	// 현재 타이머 값 읽기
+	volatile uint32_t current_cnt = TIM2->CNT; // current_cnt = 타이머의 현재 카운트
+
+	// 타이머 오버플로우 처리
+	if(current_cnt >= last_hall_cnt) // last_hall_cnt 지난 홀센서 이벤트의 카운트
+	{
+		delta_cnt = current_cnt - last_hall_cnt; // delta_cnt = 사이 간격 카운트
+	}
+	else
+	{
+		// 오버플로우 발생: 타이머가 ARR값에 도달하여 리셋됨
+		delta_cnt = (TIM2->ARR - last_hall_cnt) + current_cnt +1;
+	}
+
+	last_hall_cnt = current_cnt;
+
+	//delta_time 이 0이 아닐 때만 RPM 계산
+	//가정 : 한 회전당 6개의 홀 센서 이벤트 발생 (6 edges per revolution)
+	//Timer 주파수: 54MHz
+	//RPM 계산 공식: RPM = (60*Clock_Frequency) / (Edges_per_Revolution * delta_time)
+	if(delta_cnt <=500)
+	{
+		// 너무 빠른 신호는 무시
+	}
+	else
+	{
+		calculated_rpm = (60* 54000000.0f)/(Edges_per_Revolution * (float)(delta_cnt));
+	}
+
 }
 
 

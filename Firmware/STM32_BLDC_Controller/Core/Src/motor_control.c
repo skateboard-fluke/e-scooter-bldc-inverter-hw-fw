@@ -41,3 +41,27 @@ void Motor_Control_PI_1ms(void)
 		PIterm = 0.0f;
 	}
 }
+
+void TIM1_UP_TIM10_IRQHandler(void)
+{
+	Tim1TestCnt++;
+
+	RpmNew = calculated_rpm;
+
+	if(RpmNew==RpmOld)
+	{
+		rpmHoldCounter++;
+		if(rpmHoldCounter>20000)
+		{
+			calculated_rpm = 0.0f;
+			rpmHoldCounter = 0;
+		}
+	}
+	RpmOld = calculated_rpm;
+	// 아직 마무리 x
+}
+
+
+
+
+

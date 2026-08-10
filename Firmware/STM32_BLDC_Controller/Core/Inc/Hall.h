@@ -17,7 +17,7 @@ extern uint32_t ccr_c;
 extern unsigned int dir;
 extern uint8_t StartFlag;
 extern volatile uint32_t voltage_ref;
-
+extern volatile float calculated_rpm;
 
 void Initialize_Hall_Sensors(void);
 void Update_Swtiching_Pattern(uint8_t Hall_sum);

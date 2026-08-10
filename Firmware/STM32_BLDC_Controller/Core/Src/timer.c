@@ -10,6 +10,7 @@
 
 void Initialize_PWM(void)/*Initialize TIM1 for PWM*/
 {
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
 	//PE13~8 -> TIM1 의 CH3/3N/2/2N/1/1N으로 사용
 	GPIOE->MODER &=
 				   ~(0x3<<(8*2) |

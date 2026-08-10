@@ -10,6 +10,7 @@
 
 #include "stm32f7xx.h"
 #include "timer.h"
+#include "Hall.h"
 
 extern float RpmRef;
 extern float RpmErr;
