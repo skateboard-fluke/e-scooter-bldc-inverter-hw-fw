@@ -11,6 +11,7 @@
 #include "stm32f7xx.h"
 #include "timer.h"
 #include "Hall.h"
+#include "config.h"
 
 extern float RpmRef;
 extern float RpmErr;
@@ -22,11 +23,13 @@ extern float Ki;
 extern volatile float motor_speed_rpm;
 extern uint8_t SpdFlg;
 extern volatile uint32_t voltage_ref;
-extern volatile float speed_km_h;
 extern float Vdc;
 extern float MosfetTemp;
 extern uint8_t FltFlg;
 
-
+void LPF(float input, float Fx, volatile float *output);
+void Motor_Init(void);
 void Motor_Control_PI_1ms(void);
+void Motor_SetCurrentOffset(void);
+
 #endif /* INC_MOTOR_CONTROL_H_ */

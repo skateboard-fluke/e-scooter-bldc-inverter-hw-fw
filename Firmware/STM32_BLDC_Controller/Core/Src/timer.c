@@ -70,12 +70,6 @@ void Initialize_PWM(void)/*Initialize TIM1 for PWM*/
 
 
 
-
-
-
-
-
-
 void Initialize_TIM2(void)
 {
 	//TIM2 clock 활성화
@@ -97,7 +91,26 @@ void Initialize_TIM2(void)
 	TIM2->CR1 |= TIM_CR1_CEN;
 }
 
-void EXTI0_IRQHanlder(void)
+void Enable_PWM(void)
 {
+	TIM1->BDTR |= TIM_BDTR_MOE; // MOE=1 Main output enable
+}
+
+
+void Disable_PWM(void)
+{
+	TIM1->BDTR &= ~(TIM_BDTR_MOE); //MOE = 0
+	Mask_Channel(1);
+	Mask_Channel(2);
+	Mask_Channel(3);
 
 }
+
+
+void Start_TIM1_Control_Interrupt(void)
+{
+    NVIC->ISER[0] |= 0x02000000;        // TIM1 Update Interrupt 활성화 (IRQ 25)
+    while (!(TIM1->CR1 & 0x0010));      // TIM1 언더플로우 동기화 대기
+    TIM1->RCR = 0x0001;                 // 100us 주기 업데이트 (RCR = 1)
+}
+

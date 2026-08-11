@@ -56,3 +56,10 @@ void Initialize_ADC(void)
 
 }
 
+
+
+
+
+
+
+

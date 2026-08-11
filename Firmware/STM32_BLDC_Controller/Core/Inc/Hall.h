@@ -18,9 +18,10 @@ extern unsigned int dir;
 extern uint8_t StartFlag;
 extern volatile uint32_t voltage_ref;
 extern volatile float calculated_rpm;
+extern uint8_t HallSum;
 
 void Initialize_Hall_Sensors(void);
-void Update_Swtiching_Pattern(uint8_t Hall_sum);
+void Update_Switching_Pattern(uint8_t Hall_sum);
 void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC);
 void Mask_Channel(uint8_t channel);
 void Unmask_Channel(uint8_t channel);

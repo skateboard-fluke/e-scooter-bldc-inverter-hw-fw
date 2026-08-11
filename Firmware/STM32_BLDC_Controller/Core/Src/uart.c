@@ -145,9 +145,9 @@ void USART3_SendFloat_Simple(float value, int decimals)
 void Bluetooth_Send_Telemetry_500ms(void)
 {
 	// 블루투스 송신
-	USART3_SendString("Spd :");
-	USART3_SendFloat_Simple(speed_km_h, 1);
-	USART3_SendString("\n");
+//	USART3_SendString("Spd :");
+//	USART3_SendFloat_Simple(speed_km_h, 1);
+//	USART3_SendString("\n");
 
 	USART3_SendString("Vdc :");
 	USART3_SendFloat_Simple(Vdc, 1);
@@ -163,7 +163,7 @@ void Bluetooth_Send_Telemetry_500ms(void)
 }
 
 
-void USART2_init(void)
+void USART2_Init(void)
 {
 	// USART2 클럭 활성화, GPIOD 클럭 활성화
 	RCC->APB1ENR |= RCC_APB1ENR_USART2EN;

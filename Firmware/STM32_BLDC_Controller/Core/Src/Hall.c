@@ -12,7 +12,7 @@ uint32_t ccr_a =0;
 uint32_t ccr_b =0;
 uint32_t ccr_c =0;
 unsigned int dir =1;
-uint8_t StartFlag = 0;
+uint8_t StartFlag = 1;
 uint8_t HA = 0;
 uint8_t HB = 0;
 uint8_t HC = 0;
@@ -58,7 +58,7 @@ void Initialize_Hall_Sensors(void)
 }
 
 
-void Update_Swtiching_Pattern(uint8_t Hall_Sum)
+void Update_Switching_Pattern(uint8_t Hall_Sum)
 {
 	if(dir==1)//시계방향
 	{
@@ -281,8 +281,8 @@ void Update_Hall_Sequence(void)
 {
 	// PD0, PD1, PD2에서 홀 신호 읽기
 	HA = GPIOD->IDR & GPIO_IDR_IDR_0;
-	HB = GPIOD->IDR & GPIO_IDR_IDR_1;
-	HC = GPIOD->IDR & GPIO_IDR_IDR_2;
+	HB = (GPIOD->IDR & GPIO_IDR_IDR_1)>>1;
+	HC = (GPIOD->IDR & GPIO_IDR_IDR_2)>>2;
 	HallSum = 2*2*HA + 2*HB + HC;
 }
 

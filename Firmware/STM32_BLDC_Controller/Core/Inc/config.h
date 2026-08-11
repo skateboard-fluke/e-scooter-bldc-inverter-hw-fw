@@ -42,6 +42,6 @@
 
 #define OC_LEVEL 35.0f
 #define OC_TRIP_COUNT 50 // 2.5ms@20kHz 예시
-#define RPM_TO_KMH(rpm) ((rpm) * (WHEEL_CIRCUM_M) * 60.0f / 1000.0f)
+
 
 #endif /* INC_CONFIG_H_ */
