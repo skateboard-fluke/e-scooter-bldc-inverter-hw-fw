@@ -8,7 +8,11 @@
 
 #include "motor_control.h"
 
-float RpmRef,RpmErr,Pterm,Iterm,PIterm = 0.0f;
+float RpmRef =0.0f;
+float RpmErr = 0.0f;
+float Pterm = 0.0f;
+float Iterm = 0.0f;
+float PIterm = 0.0f;
 float Kp,Ki = 0.0f;
 volatile float motor_speed_rpm = 0.0f;
 uint8_t SpdFlg = 0;

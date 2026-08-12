@@ -10,14 +10,33 @@ void Initialize_ADC(void)
 {
 	const uint32_t PA0_7_Mask = 0x0000FFFFU;
 	// GPIO 초기화 PA0~7
-	GPIOA->MODER &= ~PA0_7_Mask;
-	GPIOA->MODER |= PA0_7_Mask;
+	GPIOA->MODER &= ~(
+					(0x3U<<GPIO_MODER_MODER0_Pos) |
+					(0x3U<<GPIO_MODER_MODER1_Pos) |
+					(0x3U<<GPIO_MODER_MODER2_Pos) |
+					(0x3U<<GPIO_MODER_MODER3_Pos) |
+					(0x3U<<GPIO_MODER_MODER4_Pos) |
+					(0x3U<<GPIO_MODER_MODER5_Pos) |
+					(0x3U<<GPIO_MODER_MODER6_Pos) |
+					(0x3U<<GPIO_MODER_MODER0_Pos));
+	GPIOA->MODER |= (
+					(0x3U<<GPIO_MODER_MODER0_Pos) |
+					(0x3U<<GPIO_MODER_MODER1_Pos) |
+					(0x3U<<GPIO_MODER_MODER2_Pos) |
+					(0x3U<<GPIO_MODER_MODER3_Pos) |
+					(0x3U<<GPIO_MODER_MODER4_Pos) |
+					(0x3U<<GPIO_MODER_MODER5_Pos) |
+					(0x3U<<GPIO_MODER_MODER6_Pos) |
+					(0x3U<<GPIO_MODER_MODER0_Pos));
 
 	GPIOA->AFR[1] = 0x00U;
 	GPIOA->AFR[0] = 0x00U;
 
 	GPIOA->ODR = 0x00U;
-	GPIOA->OSPEEDR = 0xFC000000U; // PA 13,14,15 핀 속도: high speed
+	GPIOA->OSPEEDR |= (
+						GPIO_OSPEEDR_OSPEEDR15_1 |
+						GPIO_OSPEEDR_OSPEEDR14_1 |
+						GPIO_OSPEEDR_OSPEEDR13_1 ); // PA 13,14,15 핀 속도: high speed
 
 	// ADC 클럭 활성화
 	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN | RCC_APB2ENR_ADC2EN | RCC_APB2ENR_ADC3EN;

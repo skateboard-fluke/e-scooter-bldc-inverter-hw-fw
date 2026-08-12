@@ -17,7 +17,7 @@ uint8_t HA = 0;
 uint8_t HB = 0;
 uint8_t HC = 0;
 uint8_t HallSum = 0;
-static const float Edges_per_Revolution = 1; // 고쳐야 됨
+static const float Edges_per_Revolution = HALL_EDGES_PER_REV;
 
 volatile uint32_t last_hall_cnt = 0;
 volatile float calculated_rpm =0.0f;
@@ -83,6 +83,7 @@ void Update_Switching_Pattern(uint8_t Hall_Sum)
 		case 3:
 			// 상태 5
 			Set_Phases(1, 0, -1);
+			break;
 		case 2:
 			// 상태 6
 			Set_Phases(1, -1, 0);
@@ -168,17 +169,17 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 	{
 		if(phaseB==1)
 		{
-			TIM1->CCR1 = ccr_b; //Phase B High
+			TIM1->CCR2 = ccr_b; //Phase B High
 			Unmask_Channel(2);
 		}
 		else if(phaseB==-1)		//Phase B Low
 		{
-			TIM1->CCR1 = CNT_MAX;
+			TIM1->CCR2 = CNT_MAX;
 			Unmask_Channel(2);
 		}
 		else
 		{
-			TIM1->CCR1 = 0;
+			TIM1->CCR2 = 0;
 			Mask_Channel(2);
 		}
 	}
@@ -190,17 +191,17 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 	{
 		if(phaseC==1)
 		{
-			TIM1->CCR1 = ccr_c; //Phase C High
+			TIM1->CCR3 = ccr_c; //Phase C High
 			Unmask_Channel(3);
 		}
 		else if(phaseC==-1)		//Phase C Low
 		{
-			TIM1->CCR1 = CNT_MAX;
+			TIM1->CCR3 = CNT_MAX;
 			Unmask_Channel(3);
 		}
 		else
 		{
-			TIM1->CCR1 = 0;
+			TIM1->CCR3 = 0;
 			Mask_Channel(3);
 		}
 	}
@@ -220,7 +221,7 @@ void Mask_Channel(uint8_t channel)
 			TIM1->CCER &= ~(TIM_CCER_CC2E | TIM_CCER_CC2NE);
 			break;
 		case 3:
-			TIM1->CCER &= !(TIM_CCER_CC3E | TIM_CCER_CC3NE);
+			TIM1->CCER &= ~(TIM_CCER_CC3E | TIM_CCER_CC3NE);
 			break;
 		default:
 			//유호하지 않은 채널 번호 처리(필요 시)
@@ -283,7 +284,7 @@ void Update_Hall_Sequence(void)
 	HA = GPIOD->IDR & GPIO_IDR_IDR_0;
 	HB = (GPIOD->IDR & GPIO_IDR_IDR_1)>>1;
 	HC = (GPIOD->IDR & GPIO_IDR_IDR_2)>>2;
-	HallSum = 2*2*HA + 2*HB + HC;
+	HallSum = (HA<<2) | (HB<<1) | (HC);
 }
 
 void SpeedCal(void)
