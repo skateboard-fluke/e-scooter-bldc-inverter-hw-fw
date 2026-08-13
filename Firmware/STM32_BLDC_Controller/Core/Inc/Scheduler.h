@@ -21,7 +21,7 @@ void Task_100ms(void);
 void Task_500ms(void);
 void Task_1s(void);
 
-
+extern volatile uint8_t Task_1msFlg;
 extern volatile uint8_t Task_10msFlg;
 extern volatile uint8_t Task_100msFlg;
 extern volatile uint8_t Task_500msFlg;

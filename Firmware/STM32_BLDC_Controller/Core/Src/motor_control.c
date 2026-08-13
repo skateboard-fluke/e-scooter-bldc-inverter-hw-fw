@@ -8,14 +8,16 @@
 
 #include "motor_control.h"
 
+#define RPM_EPSILON 0.01f // 노이즈 허용 오차 범위
 float RpmRef =0.0f;
 float RpmErr = 0.0f;
 float Pterm = 0.0f;
 float Iterm = 0.0f;
 float PIterm = 0.0f;
-float Kp,Ki = 0.0f;
+float Kp = 0.0f;
+float Ki = 0.0f;
 volatile float motor_speed_rpm = 0.0f;
-uint8_t SpdFlg = 0;
+uint8_t MotorRunEnable = 1;
 volatile uint32_t voltage_ref=0;
 float Vdc = 0.0f;
 float MosfetTemp = 0.0f;
@@ -24,20 +26,27 @@ uint8_t FltFlg = 0;
 float RpmNew =0.0f;
 float RpmOld =0.0f;
 uint32_t rpmHoldCounter	=0;
-float ias, ibs, ics = 0.0f;
-float ias_Cal, ibs_Cal, ics_Cal = 0.0f;
+float ias = 0.0f;
+float ibs = 0.0f;
+float ics = 0.0f;
+float ias_Cal = 0.0f;
+float ibs_Cal = 0.0f;
+float ics_Cal = 0.0f;
 float iRamp = 0.15f;
-float ias_LPF, ibs_LPF, ics_LPF = 0.0f;
-uint32_t ias_Offset, ibs_Offset, ics_Offset = 0;
+float ias_LPF = 0.0f;
+float ibs_LPF = 0.0f;
+float ics_LPF = 0.0f;
+int32_t ias_Offset = 0;
+int32_t ibs_Offset = 0;
+int32_t ics_Offset = 0;
 
 float Volt =0.0f;
 float Throttle_ADC= 0.0f;
-float I_MAX = 0.0f;
 float ThrottleRef = 0.0f;
 float I_Max = 0.0f;
 float ThrottleRef_Ramp = 0.0f;
 
-uint8_t FltCnt = 0;
+uint32_t FltCnt = 0;
 uint8_t ThrottleActive = 0;
 uint8_t InitCal = 0;
 uint32_t Tim1TestCnt = 0;
@@ -45,8 +54,15 @@ uint32_t Tim1TestCnt = 0;
 float Fi = 0.0f;
 float Ft = 0.0f;
 
-#define MAX3(a,b,c) (((a)>(b)) ? (((a)>(c))?(a):(c)):(((b)>(c))?(b):(c)))
 #define Tsamp	0.00005				// sampling time of current controller
+
+
+
+static inline float max3(float a, float b, float c)
+{
+	float m = (a > b) ? a: b;
+	return (m > c) ? m : c;
+}
 
 
 
@@ -85,22 +101,46 @@ static inline void rampToTarget(float command, float *output, float slope)
 
 
 
-
+/*
+ * @brief 속도 PI 계산
+*/
 
 void Motor_Control_PI_1ms(void)
 {
-	if(SpdFlg == 1)
+
+	const float dt = 0.001f; // 제어 주기
+	const float out_max = (float) (CNT_MAX - 100);
+	const float out_min = 0.0f;
+
+	if(MotorRunEnable == 1)
 	{
 		RpmErr = RpmRef - motor_speed_rpm;
 		Pterm = Kp*RpmErr;
-		Iterm += Ki*RpmErr*0.001f; // 0.001--> 속도제어기가 실행되는 주기
-		PIterm = Pterm + Iterm;
 
-		if(PIterm > (float)(CNT_MAX-100))
+		/* 예측 적분(적분을 미리 계산) */
+		float Iterm_next = Iterm + Ki*RpmErr*dt;
+		float PI_unsat = Pterm + Iterm_next;
+
+		/* 출력(clamp) 적용(0..out_max) */
+		float PI_clamped = fminf(fmaxf(PI_unsat, out_min), out_max);
+
+		/*
+		 방법 A: 조건부 적분(간단하고 안전)
+		 - PI_unsat가 클램프되지 않으면 적분 허용
+		 - PI_unsat가 클램프된 상태이면, 적분이 '포화를 더 악화시키는' 경우만 금지
+		   (즉, 포화 상태인데 에러가 포화를 더 밀어넣는 방향이면 적분하지 않음)
+		 */
+		if((PI_unsat == PI_clamped) || (PI_unsat > PI_clamped && RpmErr < 0.0f) || (PI_unsat < PI_clamped && RpmErr > 0.0f))
 		{
-			PIterm = (float)(CNT_MAX-100);
+			Iterm = Iterm_next; // 적분 허용
 		}
-		voltage_ref = PIterm;
+		/* else: Iterm 유지(적분 동결) */
+
+		/* 최종 PI와 안전한 클램프 및 무부호 대입 */
+
+		PIterm = Pterm + Iterm;
+		PIterm = fminf(fmaxf(PIterm, out_min), out_max);
+
 	}else
 	{
 		Pterm = 0.0f;
@@ -119,17 +159,23 @@ void Motor_Control_PI_1ms(void)
  */
 
 static inline void Motor_CheckRpmStuck(void)
-{
+{	
+	__disable_irq();
 	RpmNew = calculated_rpm;
+	__enable_irq();
 
-	if(RpmNew == RpmOld)
+	if(fabsf(RpmNew - RpmOld) < RPM_EPSILON)
 	{
 		rpmHoldCounter++;
-		if(rpmHoldCounter>20000)
+		if(rpmHoldCounter > 20000)
 		{
 			calculated_rpm = 0.0f;
-			rpmHoldCounter=0;
-		}
+			rpmHoldCounter = 0;
+		}	
+	}
+	else
+	{
+		rpmHoldCounter = 0;
 	}
 	RpmOld = calculated_rpm;
 }
@@ -180,7 +226,7 @@ static inline void Motor_ReadADC(void)
 
 static inline void Motor_CheckProtection(void)
 {
-	I_Max = MAX3(ias, ibs, ics);
+	I_Max = max3(ias, ibs, ics);
 
 	if(I_Max > OC_LEVEL)
 	{
@@ -202,13 +248,17 @@ static inline void Motor_CheckProtection(void)
  */
 
 static inline void Motor_ProcessSpeed(void)
-{
-	LPF(calculated_rpm, Ft, &motor_speed_rpm);
+{	
+	__disable_irq();
+	float rpm_snapshot = calculated_rpm; // 홀 센서 속도 계산값 스냅샷
+	__enable_irq();
+	LPF(rpm_snapshot, Ft, &motor_speed_rpm);
 }
 
 
 /**
  * @brief 쓰로틀 히스테리시스 판단, 지령 맵핑 및 Ramp 제어
+ * 쓰로틀 입력 -> ThrottleRef 계산
  */
 
 static inline void Motor_ProcessThrottleCommand(void)
@@ -226,9 +276,7 @@ static inline void Motor_ProcessThrottleCommand(void)
 	// 6-STEP 제어 모드
 	if(!ThrottleActive) // 히스테리시스 값 이하
 	{
-		Disable_PWM();
 		ThrottleRef = 0.0f;
-		voltage_ref = 0;
 	}
 	else // 모터 구동
 	{
@@ -236,32 +284,19 @@ static inline void Motor_ProcessThrottleCommand(void)
 	}
 
 	rampToTarget(ThrottleRef, &ThrottleRef_Ramp, iRamp); //Ramp 함수를 통한 모터 응답성 조절
-
-	if(SpdFlg == 0)
-	{
-		if(ThrottleRef_Ramp < 0.0f)
-		{
-			ThrottleRef_Ramp = 0.0f;
-		}
-		voltage_ref = (uint32_t) ThrottleRef_Ramp; // 형변환을 통한 최종 지령값 추출
-
-		if(voltage_ref > CNT_MAX-100)
-		{
-			voltage_ref = CNT_MAX-100;
-		}
-	}
-
-
 }
 
 /**
  * @brief 6-Step 인버터 스위칭 패턴 출력 또는 비상 셧다운
  */
-static inline void Motor_UpdateInverterOutput(void)
+void Motor_UpdateInverterOutput(void)
 {
 	if(FltFlg ==0 && InitCal ==1)
 	{
-		Update_Switching_Pattern(HallSum);
+		__disable_irq();
+		uint8_t Hall_Snapshot = HallSum; // 홀 센서 상태를 스냅샷으로 저장
+		__enable_irq();
+		Update_Switching_Pattern(Hall_Snapshot);
 	}
 	else
 	{
@@ -310,7 +345,6 @@ void TIM1_UP_TIM10_IRQHandler(void)
 			Motor_CheckProtection();
 			Motor_ProcessSpeed();
 			Motor_ProcessThrottleCommand();
-			Motor_UpdateInverterOutput();
 		}
 	}
 
@@ -329,13 +363,13 @@ void Motor_SetCurrentOffset(void)
 		ias_Offset += ADC1->DR;
 
 		// PA1(ibs) 읽기 - ADC2
-		ADC2->SQR3 = ADC_SQR3_SQ1_0; // SQ1 = 0 채널 0
+		ADC2->SQR3 = ADC_SQR3_SQ1_0; // SQ1 = 1 채널 1
 		ADC2->CR2 |= ADC_CR2_SWSTART;
 		while(!(ADC2->SR & ADC_SR_EOC));
 		ibs_Offset += ADC2->DR;
 
 		// PA0(ics) 읽기 - ADC3
-		ADC3->SQR3 = ADC_SQR3_SQ1_1; // SQ1 = 0 채널 0
+		ADC3->SQR3 = ADC_SQR3_SQ1_1; // SQ1 = 2 채널 2
 		ADC3->CR2 |= ADC_CR2_SWSTART;
 		while(!(ADC3->SR & ADC_SR_EOC));
 		ics_Offset += ADC3->DR;
@@ -357,4 +391,39 @@ void Motor_SetCurrentOffset(void)
 
 
 
+void Motor_UpdateControlOutput(void)
+{
+	if(FltFlg || !MotorRunEnable)
+	{
+		voltage_ref = 0;
+		return;
+	}
+	if(!ThrottleActive)
+	{
+		voltage_ref = 0;
+		return;
+	}
 
+	if(MotorRunEnable == 0 )
+	{
+		if(ThrottleRef_Ramp < 0.0f)
+		{
+			ThrottleRef_Ramp = 0.0f;
+		}
+
+		voltage_ref = (uint32_t)ThrottleRef_Ramp;
+		if(voltage_ref > (CNT_MAX - 100))
+		{
+			voltage_ref = CNT_MAX - 100;
+		}
+	}
+	else
+	{
+		voltage_ref = (uint32_t)PIterm;
+		if(voltage_ref > (CNT_MAX - 100))
+		{
+			voltage_ref = CNT_MAX - 100;
+		}
+	}
+
+}

@@ -38,28 +38,26 @@ int main(void)
         Scheduler();
 
         // 각 백그라운드 태스크 독립 실행 (if - else if 제거)
-        if (Task_10msFlg)
-        {
-            Task_10msFlg = 0; // 플래그 클리어 위치 확인 필요
-            Task_10ms();
-        }
+        if (Task_1msFlg)   { Task_1msFlg = 0; Task_1ms(); }
+        if (Task_10msFlg)  { Task_10msFlg = 0; Task_10ms(); }
+        if (Task_100msFlg) { Task_100msFlg = 0; Task_100ms(); }
+        if (Task_500msFlg) { Task_500msFlg = 0; Task_500ms(); }
+        if (Task_1sFlg)    { Task_1sFlg = 0; Task_1s(); }
 
-        if (Task_100msFlg)
+        
+        if(USART2_CmdReadyFlg)
         {
-            Task_100msFlg = 0;
-            Task_100ms();
-        }
-
-        if (Task_500msFlg)
-        {
-            Task_500msFlg = 0;
-            Task_500ms();
-        }
-
-        if (Task_1sFlg)
-        {
-            Task_1sFlg = 0;
-            Task_1s();
+            USART2_CmdReadyFlg = 0;
+            if(strcmp((char*)(usart2_rx_buf), "Start")==0)
+            {
+                StartFlag = 1;
+                USART2_SendString("PC: Start Command Received!\r\n");
+            }
+            else if(strcmp((char*)usart2_rx_buf, "Stop")==0)
+            {
+                StartFlag = 0;
+                USART2_SendString("PC: Motor Stop!\r\n ");
+            }
         }
 
         // 모터 구동 상태 변경 감지 (엣지 트리거 방식)
@@ -68,12 +66,10 @@ int main(void)
             if (StartFlag == 1)
             {
                 Enable_PWM();
-                init_drive = 1;
             }
             else
             {
                 Disable_PWM();
-                init_drive = 0;
             }
             prev_StartFlag = StartFlag;
         }

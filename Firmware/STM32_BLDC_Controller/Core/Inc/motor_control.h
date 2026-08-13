@@ -12,6 +12,7 @@
 #include "timer.h"
 #include "Hall.h"
 #include "config.h"
+#include "math.h"
 
 extern float RpmRef;
 extern float RpmErr;
@@ -21,15 +22,18 @@ extern float PIterm;
 extern float Kp;
 extern float Ki;
 extern volatile float motor_speed_rpm;
-extern uint8_t SpdFlg;
 extern volatile uint32_t voltage_ref;
 extern float Vdc;
 extern float MosfetTemp;
 extern uint8_t FltFlg;
+extern uint8_t MotorRunEnable;
 
 void LPF(float input, float Fx, volatile float *output);
 void Motor_Init(void);
 void Motor_Control_PI_1ms(void);
 void Motor_SetCurrentOffset(void);
+void Motor_UpdateControlOutput(void);
+void Motor_UpdateInverterOutput(void);
+
 
 #endif /* INC_MOTOR_CONTROL_H_ */

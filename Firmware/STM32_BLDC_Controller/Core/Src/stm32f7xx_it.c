@@ -42,6 +42,15 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+volatile char usart2_rx_buf[64]= {0};
+volatile uint8_t usart2_rx_idx = 0;
+volatile uint8_t USART2_CmdReadyFlg = 0;
+
+volatile char usart3_rx_buf[64] = {0};
+volatile uint8_t usart3_rx_idx = 0;
+volatile uint8_t USART3_CmdReadyFlg = 0;
+
+
 
 /* USER CODE END PV */
 
@@ -201,5 +210,70 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
+
+void USART2_IRQHandler(void)
+{
+  // RXNE: 데이터 수신 확인
+  if(USART2->ISR & USART_ISR_RXNE)
+  {
+    char c = (char)(USART2->RDR & 0xFF);
+
+    if(c=='\r' || c=='\n')
+    {
+      if(usart2_rx_idx>0)
+      {
+        usart2_rx_buf[usart2_rx_idx] = '\0';
+        USART2_CmdReadyFlg = 1;
+        usart2_rx_idx = 0;
+      }
+    }
+    else
+    {
+      if(usart2_rx_idx < sizeof(usart2_rx_buf)-1)
+      {
+        usart2_rx_buf[usart2_rx_idx++] = c;
+      }
+    }
+  }
+
+  //ORE: Overrun Error 방지
+  if(USART2->ISR & USART_ISR_ORE)
+  {
+    USART2->ICR = USART_ICR_ORECF;
+  }
+}
+
+void USART3_IRQHandler(void)
+{
+  if(USART3->ISR & USART_ISR_RXNE)
+  {
+    char c = (char) (USART3->RDR & 0xFF);
+
+    if(c == '\r' || c== '\0')
+    {
+      if(usart3_rx_idx > 0)
+      {
+        usart3_rx_buf[usart3_rx_idx] = '\0';
+        USART3_CmdReadyFlg = 1;
+        usart3_rx_idx = 0;
+      }
+    }
+    else
+    {
+      if(usart3_rx_idx < sizeof(usart3_rx_buf) -1)
+      {
+        usart3_rx_buf[usart3_rx_idx++] = c;
+      }
+    }
+      
+  }
+  // ORE: Overrun Error 방지
+  if (USART3->ISR & USART_ISR_ORE)
+  {
+      USART3->ICR = USART_ICR_ORECF;
+  }
+
+}
+
 
 /* USER CODE END 1 */

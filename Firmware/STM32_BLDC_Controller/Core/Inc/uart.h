@@ -10,6 +10,14 @@
 #include "stm32f7xx.h"
 #include "motor_control.h"
 
+extern volatile char usart2_rx_buf[64];
+extern volatile uint8_t USART2_CmdReadyFlg;
+
+extern volatile char usart3_rx_buf[64];
+extern volatile uint8_t USART3_CmdReadyFlg;
+
+
+
 void AT09_Init(void);
 void USART3_SendChar(char c);
 char USART3_ReceiveChar(void);

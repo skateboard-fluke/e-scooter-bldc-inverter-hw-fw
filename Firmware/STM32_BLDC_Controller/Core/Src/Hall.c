@@ -11,12 +11,13 @@
 uint32_t ccr_a =0;
 uint32_t ccr_b =0;
 uint32_t ccr_c =0;
-unsigned int dir =1;
-uint8_t StartFlag = 1;
+unsigned int dir = 1;
+
 uint8_t HA = 0;
 uint8_t HB = 0;
 uint8_t HC = 0;
 uint8_t HallSum = 0;
+uint8_t StartFlag = 0;  // UART에서 수신한 Start/Stop 명령 플래그
 static const float Edges_per_Revolution = HALL_EDGES_PER_REV;
 
 volatile uint32_t last_hall_cnt = 0;
@@ -30,7 +31,8 @@ void Initialize_Hall_Sensors(void)
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
 
 	// 2. PD0, PD1, PD2 입력 모드 설정 input mode:00
-	GPIOD->MODER &= ~((0x3U<<(0*2)) | //PD0
+	GPIOD->MODER &= ~(
+					(0x3U<<(0*2)) 	| //PD0
 					(0x3U<<(1*2))	| //PD1
 					(0x3U<<(2*2)));	  //PD2
 	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN; // SYSCFG 클록 인가
@@ -139,7 +141,7 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 	ccr_c = CNT_MAX - voltage_ref;
 
 	//PhaseA 설정
-	if(voltage_ref==0 || StartFlag==0)
+	if(voltage_ref==0 || MotorRunEnable==0)
 	{
 		Disable_PWM();
 	}
@@ -161,7 +163,7 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 			Mask_Channel(1);
 		}
 	}
-	if(voltage_ref==0 || StartFlag==0)
+	if(voltage_ref==0 || MotorRunEnable==0)
 	{
 		Disable_PWM();
 	}
@@ -183,7 +185,7 @@ void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 			Mask_Channel(2);
 		}
 	}
-	if(voltage_ref==0 || StartFlag==0)
+	if(voltage_ref==0 || MotorRunEnable==0)
 	{
 		Disable_PWM();
 	}
@@ -224,7 +226,7 @@ void Mask_Channel(uint8_t channel)
 			TIM1->CCER &= ~(TIM_CCER_CC3E | TIM_CCER_CC3NE);
 			break;
 		default:
-			//유호하지 않은 채널 번호 처리(필요 시)
+			//유효하지 않은 채널 번호 처리(필요 시)
 			break;
 	}
 }
@@ -243,7 +245,7 @@ void Unmask_Channel(uint8_t channel)
 			TIM1->CCER |= (TIM_CCER_CC3E | TIM_CCER_CC3NE);
 			break;
 		default:
-			//유호하지 않은 채널 번호 처리(필요 시)
+			//유효하지 않은 채널 번호 처리(필요 시)
 			break;
 	}
 }

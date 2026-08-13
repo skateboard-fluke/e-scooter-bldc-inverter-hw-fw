@@ -9,11 +9,13 @@
 #include "Scheduler.h"
 
 volatile uint32_t msTicks = 0;
+static uint32_t lastTick_1ms = 0;
 static uint32_t lastTick_10ms = 0;
 static uint32_t lastTick_100ms = 0;
 static uint32_t lastTick_500ms = 0;
 static uint32_t lastTick_1s = 0;
 
+volatile uint8_t Task_1msFlg   = 0;
 volatile uint8_t Task_10msFlg  = 0;
 volatile uint8_t Task_100msFlg = 0;
 volatile uint8_t Task_500msFlg = 0;
@@ -38,6 +40,8 @@ void SysTick_Init(void)
 void Task_1ms(void)
 {
 	Motor_Control_PI_1ms();
+	Motor_UpdateControlOutput();
+	Motor_UpdateInverterOutput();
 }
 
 
@@ -45,30 +49,32 @@ void Task_10ms(void)
 {
 	System_Monitor_Check_10ms();
 	UART2_Send_Rpm_Plot_10ms();
-	Task_10msFlg = 0;
 }
 
 void Task_100ms(void)
 {
-	Task_100msFlg = 0;
+	// 현재는 100ms 주기 태스크 없음
 }
 
 
 void Task_500ms(void)
 {
 	Bluetooth_Send_Telemetry_500ms();
-	Task_500msFlg = 0;
 }
 
 void Task_1s(void)
-{
-	Task_1sFlg=0;
+{	
+	// 현재는 1s 주기 태스크 없음
 }
 
 void Scheduler(void)
 {
 	// 1ms 태스크는 매번 실행
-	Task_1ms();
+	if((uint32_t)(msTicks-lastTick_1ms)>=1)
+	{
+		lastTick_1ms += 1;
+		Task_1msFlg = 1;
+	}
 
 	// 10ms 주기 태스크: 마지막 실행 시점으로부터 10ms 이상 경과 시 실행
 	if((uint32_t)(msTicks-lastTick_10ms)>=10)
@@ -99,8 +105,6 @@ void Scheduler(void)
 	}
 
 }
-
-
 
 
 
