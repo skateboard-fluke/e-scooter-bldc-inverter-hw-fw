@@ -51,6 +51,9 @@ uint8_t ThrottleActive = 0;
 uint8_t InitCal = 0;
 uint32_t Tim1TestCnt = 0;
 
+
+uint8_t SpdFlg = 0;
+
 float Fi = 0.0f;
 float Ft = 0.0f;
 
@@ -107,46 +110,46 @@ static inline void rampToTarget(float command, float *output, float slope)
 
 void Motor_Control_PI_1ms(void)
 {
+	if(!MotorRunEnable || !SpdFlg)
+	{
+		Pterm = 0.0f;
+		Iterm = 0.0f;
+		PIterm = 0.0f;
+		return ;
+	}
 
 	const float dt = 0.001f; // 제어 주기
 	const float out_max = (float) (CNT_MAX - 100);
 	const float out_min = 0.0f;
 
-	if(MotorRunEnable == 1)
+	
+	RpmErr = RpmRef - motor_speed_rpm;
+	Pterm = Kp*RpmErr;
+
+	/* 예측 적분(적분을 미리 계산) */
+	float Iterm_next = Iterm + Ki*RpmErr*dt;
+	float PI_unsat = Pterm + Iterm_next;
+
+	/* 출력(clamp) 적용(0..out_max) */
+	float PI_clamped = fminf(fmaxf(PI_unsat, out_min), out_max);
+
+	/*
+		방법 A: 조건부 적분(간단하고 안전)
+		- PI_unsat가 클램프되지 않으면 적분 허용
+		- PI_unsat가 클램프된 상태이면, 적분이 '포화를 더 악화시키는' 경우만 금지
+		(즉, 포화 상태인데 에러가 포화를 더 밀어넣는 방향이면 적분하지 않음)
+		*/
+	if((PI_unsat == PI_clamped) || (PI_unsat > PI_clamped && RpmErr < 0.0f) || (PI_unsat < PI_clamped && RpmErr > 0.0f))
 	{
-		RpmErr = RpmRef - motor_speed_rpm;
-		Pterm = Kp*RpmErr;
-
-		/* 예측 적분(적분을 미리 계산) */
-		float Iterm_next = Iterm + Ki*RpmErr*dt;
-		float PI_unsat = Pterm + Iterm_next;
-
-		/* 출력(clamp) 적용(0..out_max) */
-		float PI_clamped = fminf(fmaxf(PI_unsat, out_min), out_max);
-
-		/*
-		 방법 A: 조건부 적분(간단하고 안전)
-		 - PI_unsat가 클램프되지 않으면 적분 허용
-		 - PI_unsat가 클램프된 상태이면, 적분이 '포화를 더 악화시키는' 경우만 금지
-		   (즉, 포화 상태인데 에러가 포화를 더 밀어넣는 방향이면 적분하지 않음)
-		 */
-		if((PI_unsat == PI_clamped) || (PI_unsat > PI_clamped && RpmErr < 0.0f) || (PI_unsat < PI_clamped && RpmErr > 0.0f))
-		{
-			Iterm = Iterm_next; // 적분 허용
-		}
-		/* else: Iterm 유지(적분 동결) */
-
-		/* 최종 PI와 안전한 클램프 및 무부호 대입 */
-
-		PIterm = Pterm + Iterm;
-		PIterm = fminf(fmaxf(PIterm, out_min), out_max);
-
-	}else
-	{
-		Pterm = 0.0f;
-		Iterm = 0.0f;
-		PIterm = 0.0f;
+		Iterm = Iterm_next; // 적분 허용
 	}
+	/* else: Iterm 유지(적분 동결) */
+
+	/* 최종 PI와 안전한 클램프 및 무부호 대입 */
+
+	PIterm = Pterm + Iterm;
+	PIterm = fminf(fmaxf(PIterm, out_min), out_max);
+
 }
 
 
@@ -398,32 +401,30 @@ void Motor_UpdateControlOutput(void)
 		voltage_ref = 0;
 		return;
 	}
-	if(!ThrottleActive)
-	{
-		voltage_ref = 0;
-		return;
-	}
 
-	if(MotorRunEnable == 0 )
+	if(SpdFlg == 1)
 	{
+		voltage_ref = (uint32_t)PIterm;
+	}
+	else
+	{
+		if(!ThrottleActive)
+		{
+			voltage_ref = 0;
+			return;
+		}
+
 		if(ThrottleRef_Ramp < 0.0f)
 		{
 			ThrottleRef_Ramp = 0.0f;
 		}
 
-		voltage_ref = (uint32_t)ThrottleRef_Ramp;
-		if(voltage_ref > (CNT_MAX - 100))
-		{
-			voltage_ref = CNT_MAX - 100;
-		}
+		voltage_ref = (uint32_t) ThrottleRef_Ramp;
 	}
-	else
+
+	if(voltage_ref > (CNT_MAX -100))
 	{
-		voltage_ref = (uint32_t)PIterm;
-		if(voltage_ref > (CNT_MAX - 100))
-		{
-			voltage_ref = CNT_MAX - 100;
-		}
+		voltage_ref = CNT_MAX - 100;
 	}
 
 }

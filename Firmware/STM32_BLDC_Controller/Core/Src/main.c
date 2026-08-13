@@ -3,7 +3,7 @@
 #include "GPIO.h"
 #include "adc.h"
 #include "timer.h"
-#include "hall.h"
+#include "Hall.h"
 #include "uart.h"
 #include "Scheduler.h"
 #include "dac.h"
@@ -30,7 +30,7 @@ int main(void)
     Start_TIM1_Control_Interrupt();
     Update_Hall_Sequence();
 
-    uint8_t prev_StartFlag = 0;
+    uint8_t prev_StartFlg = 0;
 
     while(1)
     {
@@ -50,28 +50,48 @@ int main(void)
             USART2_CmdReadyFlg = 0;
             if(strcmp((char*)(usart2_rx_buf), "Start")==0)
             {
-                StartFlag = 1;
+                StartFlg = 1;
                 USART2_SendString("PC: Start Command Received!\r\n");
             }
             else if(strcmp((char*)usart2_rx_buf, "Stop")==0)
             {
-                StartFlag = 0;
+                StartFlg = 0;
                 USART2_SendString("PC: Motor Stop!\r\n ");
+            }
+            else if(strcmp((char*)usart2_rx_buf, "SpeedMode")==0)
+            {
+                if(StartFlg == 1)
+                {
+                    SpdFlg = 1;
+                    USART2_SendString("PC: Speed Mode!\r\n");
+                }
+                else
+                {
+                    USART2_SendString("PC: Start motor first!\r\n");
+                }
+
             }
         }
 
+    
         // 모터 구동 상태 변경 감지 (엣지 트리거 방식)
-        if (StartFlag != prev_StartFlag)
+        if (StartFlg != prev_StartFlg)
         {
-            if (StartFlag == 1)
+            if (StartFlg == 1)
             {
+                MotorRunEnable = 1;
                 Enable_PWM();
             }
             else
             {
+                MotorRunEnable = 0;
+                SpdFlg = 0;
                 Disable_PWM();
             }
-            prev_StartFlag = StartFlag;
+            prev_StartFlg = StartFlg;
         }
+
+       
+        
     }
 }

@@ -27,6 +27,7 @@ extern float Vdc;
 extern float MosfetTemp;
 extern uint8_t FltFlg;
 extern uint8_t MotorRunEnable;
+extern uint8_t SpdFlg;
 
 void LPF(float input, float Fx, volatile float *output);
 void Motor_Init(void);

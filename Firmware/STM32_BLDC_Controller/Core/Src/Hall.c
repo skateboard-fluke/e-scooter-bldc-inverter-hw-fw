@@ -17,7 +17,7 @@ uint8_t HA = 0;
 uint8_t HB = 0;
 uint8_t HC = 0;
 uint8_t HallSum = 0;
-uint8_t StartFlag = 0;  // UART에서 수신한 Start/Stop 명령 플래그
+volatile uint8_t StartFlg = 0;  // UART에서 수신한 Start/Stop 명령 플래그
 static const float Edges_per_Revolution = HALL_EDGES_PER_REV;
 
 volatile uint32_t last_hall_cnt = 0;
