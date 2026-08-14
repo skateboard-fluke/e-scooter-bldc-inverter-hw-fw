@@ -163,78 +163,72 @@ void Motor_Control_PI_1ms(void)
 
 static inline void Motor_CheckRpmStuck(void)
 {	
-	__disable_irq();
-	RpmNew = calculated_rpm;
-	__enable_irq();
+	hall_timeout_cnt ++;
 
-	if(fabsf(RpmNew - RpmOld) < RPM_EPSILON)
-	{
-		rpmHoldCounter++;
-		if(rpmHoldCounter > 20000)
-		{
-			calculated_rpm = 0.0f;
-			rpmHoldCounter = 0;
-		}	
-	}
-	else
-	{
-		rpmHoldCounter = 0;
-	}
-	RpmOld = calculated_rpm;
+	// 50us * 4000 = 200ms (0.2초 동안 홀 신호가 없으면 모터 정지 판정)
+    if(hall_timeout_cnt > 4000)
+    {
+        calculated_rpm = 0.0f;
+        hall_timeout_cnt = 4000; // 카운터 오버플로우 방지
+    }
+
 }
 
 
 
 static inline void Motor_ReadADC(void)
 {
-	uint32_t result = 0;
+
+	// ★ while 대기 및 SWSTART 제거 (대기 시간 0)
+	int32_t ias_raw = ADC1->DR;
+	int32_t ibs_raw = ADC2->DR;
+	uint32_t ics_raw = ADC3->DR;
 
 	// PA0(ias) 읽기 - ADC1
-	ADC1->SQR3 = 0x00U; 				//SQ1 = 0(채널 0)
-	ADC1->CR2 |= ADC_CR2_SWSTART; 		// SWSTART 비트 on
-	while(!(ADC1->SR & ADC_SR_EOC)); 	//EOC대기
-	result = ADC1->DR;					//변환 결과 읽기
-	ias_Cal = ((float)(result - ias_Offset)*ADC_VREF/ADC_FS - OFFSET_Volt)/OPAMP_GAIN;
+	ias_Cal = ((float)(ias_raw - ias_Offset)*ADC_VREF/ADC_FS - OFFSET_Volt)/OPAMP_GAIN;
 	ias = ias_Cal;
 	LPF(ias, Fi, &ias_LPF);
 
 
 	// PA1(ibs) 읽기 - ADC2
-	ADC2->SQR3 = ADC_SQR3_SQ1_0; 		//SQ1 = 1(채널 1)
-	ADC2->CR2 |= ADC_CR2_SWSTART; 		// SWSTART 비트 on
-	while(!(ADC2->SR & ADC_SR_EOC)); 	//EOC대기
-	result = ADC2->DR;					//변환 결과 읽기
-	ibs_Cal = ((float)(result - ibs_Offset)*ADC_VREF/ADC_FS - OFFSET_Volt)/OPAMP_GAIN;
+	ibs_Cal = ((float)(ibs_raw - ibs_Offset)*ADC_VREF/ADC_FS - OFFSET_Volt)/OPAMP_GAIN;
 	ibs = ibs_Cal;
 	LPF(ibs, Fi, &ibs_LPF);
 
 	// PA2(ics) 읽기 - ADC3
-	ADC3->SQR3 = ADC_SQR3_SQ1_1; 		//SQ1 = 2(채널 2)
-	ADC3->CR2 |= ADC_CR2_SWSTART; 		// SWSTART 비트 on
-	while(!(ADC3->SR & ADC_SR_EOC)); 	//EOC대기
-	result = ADC3->DR;					//변환 결과 읽기
-	ics_Cal = ((float)(result - ics_Offset)*ADC_VREF/ADC_FS - OFFSET_Volt)/OPAMP_GAIN;
+	
+	ics_Cal = ((float)(ics_raw - ics_Offset)*ADC_VREF/ADC_FS - OFFSET_Volt)/OPAMP_GAIN;
 	ics = ics_Cal;
 	LPF(ics, Fi, &ics_LPF);
+}
 
-	// PA7(Throttle_ADC) 읽기 - ADC2
-	ADC2->SQR3 = 0x7U<<ADC_SQR3_SQ1_Pos;
-	ADC2->CR2 |= ADC_CR2_SWSTART;
-	while(!(ADC2->SR & ADC_SR_EOC));
-	result = ADC2->DR;
-	Throttle_ADC = (float) result*3.3f/4095.0f;
+
+void Read_Throttle_10ms(void)
+{
+	// 1. 인젝티드 변환 시작 (DR 레지스터/ibs 전류 측정에 영향 0%)
+	ADC2->CR2 |= ADC_CR2_JSWSTART;
+	
+	// 2. 인젝티드 변환 완료 대기 (main 루프에서 동작하므로 모터 제어에 영향 없음)
+	while(!(ADC2->SR & ADC_SR_JEOC));
+	ADC2->SR &= ~ ADC_SR_JEOC_Msk;
+
+	// 3. JDR1 (인젝티드 전용 데이터 레지스터)에서 가져옴
+	uint32_t throttle_raw = ADC2->JDR1;
+	Throttle_ADC = (float) throttle_raw*3.3f/4095.0f;
 
 }
 
 
+
+
 static inline void Motor_CheckProtection(void)
 {
-	I_Max = max3(ias, ibs, ics);
+	I_Max = max3(fabsf(ias), fabsf(ibs), fabsf(ics));
 
 	if(I_Max > OC_LEVEL)
 	{
 		FltCnt++;
-		if(FltCnt >= 1000) // 50ms 동안 확인
+		if(FltCnt >= 3) // 0.15ms 동안 확인
 		{
 			FltFlg = 1;
 			ThrottleRef = 0;
@@ -279,14 +273,32 @@ static inline void Motor_ProcessThrottleCommand(void)
 	// 6-STEP 제어 모드
 	if(!ThrottleActive) // 히스테리시스 값 이하
 	{
+		RpmRef = 0.0f;
 		ThrottleRef = 0.0f;
 	}
-	else // 모터 구동
+	else
 	{
-		ThrottleRef = Throttle_ADC * 3400.0f - 3540.0f + 1000.0f; // 0826 듀티값 변경
+		if(SpdFlg == 1)
+		{
+			float ratio = (Throttle_ADC - THROTTLE_OFF)/(3.3f - THROTTLE_OFF);
+
+			if(ratio < 0.0f) ratio=0.0f;
+			if(ratio > 1.0f) ratio = 1.0f;
+
+			RpmRef = MIN_RUN_RPM + ratio*(MAX_RPM_TARGET - MIN_RUN_RPM);
+
+		}
+		else if(SpdFlg==0)
+		{
+			ThrottleRef = Throttle_ADC * 3400.0f - 3540.0f + 1000.0f; // 0826 듀티값 변경
+		}
 	}
 
-	rampToTarget(ThrottleRef, &ThrottleRef_Ramp, iRamp); //Ramp 함수를 통한 모터 응답성 조절
+	if(SpdFlg == 0)
+	{
+		rampToTarget(ThrottleRef, &ThrottleRef_Ramp, iRamp); //Ramp 함수를 통한 모터 응답성 조절
+	}
+	
 }
 
 /**
@@ -311,6 +323,7 @@ void Motor_UpdateInverterOutput(void)
 		TIM1->CCR1 = 0;
 		TIM1->CCR2 = 0;
 		TIM1->CCR3 = 0;
+		Disable_PWM();
 	}
 }
 
@@ -357,22 +370,30 @@ void TIM1_UP_TIM10_IRQHandler(void)
 
 void Motor_SetCurrentOffset(void)
 {
+
+	ias_Offset = 0;
+	ibs_Offset = 0;
+	ics_Offset = 0;
+
+
 	for(int i =0; i<10; i++)
 	{
 		// PA0(ias) 읽기 - ADC1
-		ADC1->SQR3 = 0x00U; // SQ1 = 0 채널 0
+		ADC1->SQR3 &= ~ADC_SQR3_SQ1_Msk; // SQ1 = 0 채널 0
 		ADC1->CR2 |= ADC_CR2_SWSTART;
 		while(!(ADC1->SR & ADC_SR_EOC));
 		ias_Offset += ADC1->DR;
 
 		// PA1(ibs) 읽기 - ADC2
-		ADC2->SQR3 = ADC_SQR3_SQ1_0; // SQ1 = 1 채널 1
+		ADC2->SQR3 &= ~ADC_SQR3_SQ1_Msk;
+		ADC2->SQR3 |= ADC_SQR3_SQ1_0; // SQ1 = 1 채널 1
 		ADC2->CR2 |= ADC_CR2_SWSTART;
 		while(!(ADC2->SR & ADC_SR_EOC));
 		ibs_Offset += ADC2->DR;
 
 		// PA0(ics) 읽기 - ADC3
-		ADC3->SQR3 = ADC_SQR3_SQ1_1; // SQ1 = 2 채널 2
+		ADC3->SQR3 &= ~ADC_SQR3_SQ1_Msk;
+		ADC3->SQR3 |= ADC_SQR3_SQ1_1; // SQ1 = 2 채널 2
 		ADC3->CR2 |= ADC_CR2_SWSTART;
 		while(!(ADC3->SR & ADC_SR_EOC));
 		ics_Offset += ADC3->DR;
@@ -389,6 +410,10 @@ void Motor_SetCurrentOffset(void)
 	else
 	{
 		InitCal = 1;
+		// 오프셋 측정이 끝난 여기서 하드웨어 트리거(EXTEN)를 활성화
+        ADC1->CR2 |= (0x1U << ADC_CR2_EXTEN_Pos);
+        ADC2->CR2 |= (0x1U << ADC_CR2_EXTEN_Pos);
+        ADC3->CR2 |= (0x1U << ADC_CR2_EXTEN_Pos);
 	}
 }
 

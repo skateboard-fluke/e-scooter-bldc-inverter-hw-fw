@@ -17,8 +17,9 @@
 // Hall 엣지 수 (한 바퀴당 인터럽트 수
 //소형 BLDC모터:24.0f, 인휠모터:90.0f로 수정
 #ifndef HALL_EDGES_PER_REV
-#define HALL_EDGES_PER_REV 90.0f
+#define HALL_EDGES_PER_REV 24.0f
 #endif
+
 
 // 1: 시계방향(CW), 0: 반시계(CCW)
 #ifndef MOTOR_DIR_CW
@@ -42,6 +43,10 @@
 
 #define OC_LEVEL 35.0f
 #define OC_TRIP_COUNT 50 // 2.5ms@20kHz 예시
+
+#define MIN_RPM_TARGET   0.0f      // 쓰로틀 OFF
+#define MIN_RUN_RPM      150.0f    // 기동 최소 속도
+#define MAX_RPM_TARGET   4000.0f   // 정격 최고 속도 (4000 RPM)
 
 
 #endif /* INC_CONFIG_H_ */

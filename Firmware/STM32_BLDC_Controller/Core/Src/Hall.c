@@ -17,13 +17,15 @@ uint8_t HA = 0;
 uint8_t HB = 0;
 uint8_t HC = 0;
 uint8_t HallSum = 0;
-volatile uint8_t StartFlg = 0;  // UART에서 수신한 Start/Stop 명령 플래그
+uint8_t StartFlg = 0;  // UART에서 수신한 Start/Stop 명령 플래그
 static const float Edges_per_Revolution = HALL_EDGES_PER_REV;
 
 volatile uint32_t last_hall_cnt = 0;
 volatile float calculated_rpm =0.0f;
 volatile uint32_t delta_cnt =0;
 
+volatile uint32_t hall_timeout_cnt=0;
+	
 
 void Initialize_Hall_Sensors(void)
 {
@@ -136,117 +138,68 @@ void Update_Switching_Pattern(uint8_t Hall_Sum)
 
 void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 {
+	//PhaseA 설정
+	if(voltage_ref ==0 || MotorRunEnable==0)
+	{
+		Disable_PWM();
+		return;
+	}
+
 	ccr_a = CNT_MAX - voltage_ref;
 	ccr_b = CNT_MAX - voltage_ref;
 	ccr_c = CNT_MAX - voltage_ref;
 
-	//PhaseA 설정
-	if(voltage_ref==0 || MotorRunEnable==0)
+	//Phase A 설정
+	if(phaseA==1) // PWM MODE 2
 	{
-		Disable_PWM();
+		TIM1->CCR1 = ccr_a;
+		TIM1->CCMR1 &= ~(TIM_CCMR1_OC1M_Msk);
+		TIM1->CCMR1 |= (0x7U<<TIM_CCMR1_OC1M_Pos);
+	}else if(phaseA==-1)
+	{
+		TIM1->CCMR1 &= ~(TIM_CCMR1_OC1M_Msk);
+		TIM1->CCMR1 |= (0x5U<<TIM_CCMR1_OC1M_Pos);
 	}
 	else
 	{
-		if(phaseA==1)
-		{
-			TIM1->CCR1 = ccr_a; //Phase A High
-			Unmask_Channel(1);
-		}
-		else if(phaseA==-1)		//Phase A Low
-		{
-			TIM1->CCR1 = CNT_MAX;
-			Unmask_Channel(1);
-		}
-		else
-		{
-			TIM1->CCR1 = 0;
-			Mask_Channel(1);
-		}
+		TIM1->CCMR1 &= ~(TIM_CCMR1_OC1M_Msk);
+		TIM1->CCMR1 |= (0x4U<<TIM_CCMR1_OC1M_Pos);
 	}
-	if(voltage_ref==0 || MotorRunEnable==0)
+
+	//Phase B 설정
+	if(phaseB == 1)
 	{
-		Disable_PWM();
+		TIM1->CCR2 = ccr_b;
+		TIM1->CCMR1 &= ~(TIM_CCMR1_OC2M_Msk);
+		TIM1->CCMR1 |= (0x7U<<TIM_CCMR1_OC2M_Pos);
+	}
+	else if(phaseB == -1)
+	{
+		TIM1->CCMR1 &= ~(TIM_CCMR1_OC2M_Msk);
+		TIM1->CCMR1 |= (0x5U<<TIM_CCMR1_OC2M_Pos);
 	}
 	else
 	{
-		if(phaseB==1)
-		{
-			TIM1->CCR2 = ccr_b; //Phase B High
-			Unmask_Channel(2);
-		}
-		else if(phaseB==-1)		//Phase B Low
-		{
-			TIM1->CCR2 = CNT_MAX;
-			Unmask_Channel(2);
-		}
-		else
-		{
-			TIM1->CCR2 = 0;
-			Mask_Channel(2);
-		}
+		TIM1->CCMR1 &= ~(TIM_CCMR1_OC2M_Msk);
+		TIM1->CCMR1 |= (0x4U<<TIM_CCMR1_OC2M_Pos);
 	}
-	if(voltage_ref==0 || MotorRunEnable==0)
+
+	//Phase C 설정
+	if(phaseC==1)
 	{
-		Disable_PWM();
+		TIM1->CCR3 = ccr_c;
+		TIM1->CCMR2	&= ~(TIM_CCMR2_OC3M_Msk);
+		TIM1->CCMR2 |= (0x7U<<TIM_CCMR2_OC3M_Pos);
+	}
+	else if(phaseC == -1)
+	{
+		TIM1->CCMR2	&= ~(TIM_CCMR2_OC3M_Msk);
+		TIM1->CCMR2 |= (0x5U<<TIM_CCMR2_OC3M_Pos);
 	}
 	else
 	{
-		if(phaseC==1)
-		{
-			TIM1->CCR3 = ccr_c; //Phase C High
-			Unmask_Channel(3);
-		}
-		else if(phaseC==-1)		//Phase C Low
-		{
-			TIM1->CCR3 = CNT_MAX;
-			Unmask_Channel(3);
-		}
-		else
-		{
-			TIM1->CCR3 = 0;
-			Mask_Channel(3);
-		}
-	}
-}
-
-
-
-
-void Mask_Channel(uint8_t channel)
-{
-	switch(channel)
-	{
-		case 1:
-			TIM1->CCER &= ~(TIM_CCER_CC1E | TIM_CCER_CC1NE);
-			break;
-		case 2:
-			TIM1->CCER &= ~(TIM_CCER_CC2E | TIM_CCER_CC2NE);
-			break;
-		case 3:
-			TIM1->CCER &= ~(TIM_CCER_CC3E | TIM_CCER_CC3NE);
-			break;
-		default:
-			//유효하지 않은 채널 번호 처리(필요 시)
-			break;
-	}
-}
-
-void Unmask_Channel(uint8_t channel)
-{
-	switch(channel)
-	{
-		case 1:
-			TIM1->CCER |= (TIM_CCER_CC1E | TIM_CCER_CC1NE);
-			break;
-		case 2:
-			TIM1->CCER |= (TIM_CCER_CC2E | TIM_CCER_CC2NE);
-			break;
-		case 3:
-			TIM1->CCER |= (TIM_CCER_CC3E | TIM_CCER_CC3NE);
-			break;
-		default:
-			//유효하지 않은 채널 번호 처리(필요 시)
-			break;
+		TIM1->CCMR2	&= ~(TIM_CCMR2_OC3M_Msk);
+		TIM1->CCMR2 |= (0x4U<<TIM_CCMR2_OC3M_Pos);
 	}
 }
 
@@ -305,20 +258,22 @@ void SpeedCal(void)
 		delta_cnt = (TIM2->ARR - last_hall_cnt) + current_cnt +1;
 	}
 
-	last_hall_cnt = current_cnt;
 
+	if(delta_cnt <=500)
+	{
+		return;
+	}
+
+	last_hall_cnt = current_cnt;
+	hall_timeout_cnt = 0;
+
+	// 4. 속도 계산
+    calculated_rpm = (60.0f * 54000000.0f) / ((float)Edges_per_Revolution * (float)delta_cnt);
 	//delta_time 이 0이 아닐 때만 RPM 계산
 	//가정 : 한 회전당 6개의 홀 센서 이벤트 발생 (6 edges per revolution)
 	//Timer 주파수: 54MHz
 	//RPM 계산 공식: RPM = (60*Clock_Frequency) / (Edges_per_Revolution * delta_time)
-	if(delta_cnt <=500)
-	{
-		// 너무 빠른 신호는 무시
-	}
-	else
-	{
-		calculated_rpm = (60* 54000000.0f)/(Edges_per_Revolution * (float)(delta_cnt));
-	}
+	
 
 }
 

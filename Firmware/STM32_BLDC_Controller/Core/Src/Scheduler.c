@@ -40,15 +40,17 @@ void SysTick_Init(void)
 void Task_1ms(void)
 {
 	Motor_Control_PI_1ms();
-	Motor_UpdateControlOutput();
 	Motor_UpdateInverterOutput();
+	Motor_UpdateControlOutput();
+	
 }
 
 
 void Task_10ms(void)
 {
-	System_Monitor_Check_10ms();
-	UART2_Send_Rpm_Plot_10ms();
+	System_Monitor_Check_10ms(); // ntc 값 읽기
+	USART2_Send_Rpm_Plot_10ms();
+	Read_Throttle_10ms();
 }
 
 void Task_100ms(void)

@@ -35,6 +35,6 @@ void Motor_Control_PI_1ms(void);
 void Motor_SetCurrentOffset(void);
 void Motor_UpdateControlOutput(void);
 void Motor_UpdateInverterOutput(void);
-
+void Read_Throttle_10ms(void);
 
 #endif /* INC_MOTOR_CONTROL_H_ */

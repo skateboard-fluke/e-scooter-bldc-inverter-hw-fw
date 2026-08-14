@@ -6,6 +6,8 @@
  */
 #include "uart.h"
 
+#define USART_OK 	1
+#define USART_ERROR 0
 
 void AT09_Init(void) // BT
 {
@@ -27,6 +29,12 @@ void AT09_Init(void) // BT
 	GPIOD->AFR[1] |= 0x7U<<GPIO_AFRH_AFRH0_Pos;
 	GPIOD->AFR[1] |= 0x7U<<GPIO_AFRH_AFRH1_Pos;
 
+	// High Speed 및 Pull
+	GPIOD->OSPEEDR |= (0x3U<<GPIO_OSPEEDER_OSPEEDR8_Pos | 0x3U<<GPIO_OSPEEDER_OSPEEDR9_Pos);
+	GPIOD->PUPDR &= ~ (0x3U<<GPIO_PUPDR_PUPDR8_Pos | 0x3U<<GPIO_PUPDR_PUPDR9_Pos);
+	GPIOD->PUPDR |= (0x1U<<GPIO_PUPDR_PUPDR8_Pos | 0x1U<<GPIO_PUPDR_PUPDR9_Pos);
+
+
 	// USART3 레지스터 초기화
 	USART3->CR1 = 0;
 	USART3->CR2 = 0;
@@ -35,15 +43,16 @@ void AT09_Init(void) // BT
 	// Baud Rate 9600bps @ APB1=54MHz -> BRR = 5625
 	USART3->BRR = 5625;
 
+	NVIC_EnableIRQ(USART3_IRQn);
+
 	// TE=1 RE=1 UE=1
-	USART3->CR1 |= (USART_CR1_TE | USART_CR1_RE | USART_CR1_UE);
+	USART3->CR1 |= (USART_CR1_TE | USART_CR1_RE | USART_CR1_UE | USART_CR1_RXNEIE);
 	// TE : Transmitter Enable
 	// RE : Receive Enable
 	// UE : USART Enable
 
 }
 
-uint32_t USART_Timeout = 0;
 void USART3_SendChar(char c)
 {
 	// TXE=1 (전송 데이터 레지스터 비어있음) 대기
@@ -58,28 +67,6 @@ void USART3_SendString(const char *str)
 		USART3_SendChar(*str++);
 	}
 }
-
-
-
-char USART3_ReceiveChar(void)
-{
-	// RXNE=1 될때 까지 대기
-	while(!(USART3->ISR & USART_ISR_RXNE))
-	{
-		if(USART_Timeout>5000)
-		{
-			USART_Timeout = 0;
-
-			break;
-		}
-		else
-		{
-			USART_Timeout++;
-		}
-	}
-	return (char)(USART3->RDR & 0xFF);
-}
-
 
 void USART3_SendFloat_Simple(float value, int decimals)
 {
@@ -145,9 +132,9 @@ void USART3_SendFloat_Simple(float value, int decimals)
 void Bluetooth_Send_Telemetry_500ms(void)
 {
 	// 블루투스 송신
-//	USART3_SendString("Spd :");
-//	USART3_SendFloat_Simple(speed_km_h, 1);
-//	USART3_SendString("\n");
+	// USART3_SendString("Spd :");
+	// USART3_SendFloat_Simple(speed_km_h, 1);
+	// USART3_SendString("\n");
 
 	USART3_SendString("Vdc :");
 	USART3_SendFloat_Simple(Vdc, 1);
@@ -176,6 +163,10 @@ void USART2_Init(void)
 	GPIOD->AFR[0] &= ~(0xF<<GPIO_AFRL_AFRL5_Pos |0xF<<GPIO_AFRL_AFRL6_Pos);
 	GPIOD->AFR[0] |= (0x7<<GPIO_AFRL_AFRL5_Pos |0x7<<GPIO_AFRL_AFRL6_Pos);
 
+	GPIOD->OSPEEDR |= (0x3<<GPIO_OSPEEDR_OSPEEDR5_Pos | 0x3<<GPIO_OSPEEDR_OSPEEDR6_Pos);
+	GPIOD->PUPDR &= ~(0x3<<GPIO_PUPDR_PUPDR5_Pos | 0x3<<GPIO_PUPDR_PUPDR6_Pos);
+	GPIOD->PUPDR |= (0x1<<GPIO_PUPDR_PUPDR5_Pos | 0x1<<GPIO_PUPDR_PUPDR6_Pos);
+
 	// USART2 레지스터 초기화
 	USART2->CR1 = 0;
 	USART2->CR2 = 0;
@@ -184,8 +175,11 @@ void USART2_Init(void)
 	// Baud Rate 9600bps @ APB1=54MHz -> BRR = 5625
 	USART2->BRR = 5625;
 
+
+	NVIC_EnableIRQ(USART2_IRQn);
+
 	// TE=1 RE=1 UE=1
-	USART2->CR1 |= (USART_CR1_TE | USART_CR1_RE | USART_CR1_UE);
+	USART2->CR1 |= (USART_CR1_TE | USART_CR1_RE | USART_CR1_UE | USART_CR1_RXNEIE);
 	// TE : Transmitter Enable
 	// RE : Receive Enable
 	// UE : USART Enable
@@ -209,23 +203,6 @@ void USART2_SendString(const char*str)
 }
 
 
-char USART2_ReceiveChar(void)
-{
-	// RXNE=1 까지 대기
-	while(!(USART2->ISR & USART_ISR_RXNE))
-	{
-		if(USART_Timeout>5000)
-		{
-			USART_Timeout = 0;
-			break;
-		}
-		else
-		{
-			USART_Timeout++;
-		}
-	}
-	return (char) (USART2->RDR & 0xFF);
-}
 
 void USART2_SendFloat_Simple(float value, int decimals)
 {
@@ -288,7 +265,7 @@ void USART2_SendFloat_Simple(float value, int decimals)
 }
 
 
-void UART2_Send_Rpm_Plot_10ms(void)
+void USART2_Send_Rpm_Plot_10ms(void)
 {
 	USART2_SendString(">RpmRef:");
 	USART2_SendFloat_Simple(RpmRef, 1);

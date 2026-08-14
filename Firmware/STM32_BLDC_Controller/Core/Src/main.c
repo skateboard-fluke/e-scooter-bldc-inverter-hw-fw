@@ -7,6 +7,7 @@
 #include "uart.h"
 #include "Scheduler.h"
 #include "dac.h"
+#include "string.h"
 
 uint8_t init_drive = 0;
 

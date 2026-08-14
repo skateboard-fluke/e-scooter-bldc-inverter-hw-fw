@@ -39,6 +39,12 @@ void Initialize_PWM(void)/*Initialize TIM1 for PWM*/
 
 	TIM1->PSC = 0x0; // 216MHz/(0+1) = 216MHz
 	TIM1->ARR = CNT_MAX;
+
+
+	TIM1->CR2 &= ~(TIM_CR2_MMS_Msk);
+	TIM1->CR2 |= (0x2U<<TIM_CR2_MMS_Pos);
+
+
 	TIM1->CCMR1 =
 				(0x1<<3) | // OC1PE
 				(0x7<<4) | // OC1M -> PWM MODE2
@@ -47,7 +53,14 @@ void Initialize_PWM(void)/*Initialize TIM1 for PWM*/
 	TIM1->CCMR2 =
 				(0x1<<3) | // OC3PE
 				(0x7<<4) ; // OC3M -> PWM MODE2
-	TIM1->CCER =
+
+
+	// OC4M = PWM Mode 1 (110), OC4PE = 1
+	TIM1->CCMR2 |= (0x6<<TIM_CCMR2_OC4M_Pos) | (0x1<<TIM_CCMR2_OC4PE_Pos);
+	TIM1->CCR4 = 1;	// 바닥 직전(CNT=1)에서 트리거 펄스 출력
+	TIM1->CCER |= TIM_CCER_CC4E;
+	
+	TIM1->CCER |=
 				(0x1<<0) | // CC1E
 	            (0x1<<2) | // CC1NE
 	            (0x1<<4) | // CC2E
@@ -100,10 +113,7 @@ void Enable_PWM(void)
 void Disable_PWM(void)
 {
 	TIM1->BDTR &= ~(TIM_BDTR_MOE); //MOE = 0
-	Mask_Channel(1);
-	Mask_Channel(2);
-	Mask_Channel(3);
-
+	
 }
 
 
