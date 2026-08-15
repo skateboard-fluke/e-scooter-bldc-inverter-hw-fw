@@ -45,36 +45,32 @@ void Initialize_ADC(void)
 	ADC2->SMPR2 = ADC_SMPR2_15CYCLES_CH0_7;
 	ADC3->SMPR2 = ADC_SMPR2_15CYCLES_CH0_7;
 
-	// ADC1 설정 - PA0(IN0), PA6(IN6)
-	ADC1->CR1 &= ~ ADC_CR1_AWDCH_Msk; 	// ADC analog input Channel 0
-	// TIM1 TRGO 상승 엣지 트리거 연동 설정 추가
-	ADC1->CR2 &=~(ADC_CR2_EXTEN_Msk | ADC_CR2_EXTSEL_Msk);
-	ADC1->CR2 |= (0x3U<<ADC_CR2_EXTSEL_Pos);
-	ADC1->SQR1 &= ~ ADC_SQR1_L; 		// 1개 변환 (L=0) -> PA0에서만 변환
-	ADC1->SQR3 &= ~ ADC_SQR3_SQ1; 		// SQ1=0 (채널0)
+	// ---- ias (ADC1, PA0) : injected, TIM1 CC4 트리거 ----
+	ADC1->CR1 &= ~ADC_CR1_AWDCH_Msk;
+	ADC1->JSQR &= ~ADC_JSQR_JL_Msk;								//JL=0 , 1개 변환
+	ADC1->JSQR |= (0x0U<<ADC_JSQR_JSQ4_Pos);					//JL=0 일때는 JSQ4에 채널 지정
+	ADC1->CR2 &= ~(ADC_CR2_JEXTEN_Msk | ADC_CR2_JEXTSEL_Msk);
+	ADC1->CR2 |= (0x1U<<ADC_CR2_JEXTSEL_Pos);// JEXTSEL=0001: TIM1 CC4
 
-	// ADC2 설정 - PA1(IN1), PA7(IN7)
-	ADC2->CR1 &= ~ ADC_CR1_AWDCH_Msk;
+	// ---- ibs (ADC2, PA1) : injected, TIM1 CC4 트리거 ----
+	ADC2->CR1 &= ~ADC_CR1_AWDCH_Msk;
+	ADC2->JSQR &= ~ADC_JSQR_JL_Msk;								//JL=0 , 1개 변환
+	ADC2->JSQR |= (0x1U<<ADC_JSQR_JSQ4_Pos);					//채널1 PA1
+	ADC2->CR2 &= ~(ADC_CR2_JEXTEN_Msk | ADC_CR2_JEXTSEL_Msk);
+	ADC2->CR2 |= (0x1U<<ADC_CR2_JEXTSEL_Pos);					// JEXTSEL=0001: TIM1 CC4
 
-	ADC2->CR2 &=~(ADC_CR2_EXTEN_Msk | ADC_CR2_EXTSEL_Msk);
-	ADC2->CR2 |= (0x3U<<ADC_CR2_EXTSEL_Pos);
+	// ---- ics (ADC3, PA2) : injected, TIM1 CC4 트리거 ----
+	ADC3->CR1 &= ~ADC_CR1_AWDCH_Msk;
+	ADC3->JSQR &= ~ADC_JSQR_JL_Msk;								//JL=0 , 1개 변환
+	ADC3->JSQR |= (0x2U<<ADC_JSQR_JSQ4_Pos);					//채널2 PA2
+	ADC3->CR2 &= ~(ADC_CR2_JEXTEN_Msk | ADC_CR2_JEXTSEL_Msk);
+	ADC3->CR2 |= (0x1U<<ADC_CR2_JEXTSEL_Pos);					// JEXTSEL=0001: TIM1 CC4
 
-	ADC2->SQR1 &= ~ ADC_SQR1_L; // 1개 변환 (L=0) -> PA1에서만 변환
-	ADC2->SQR3 = (1U << ADC_SQR3_SQ1_Pos);
-
-	// ADC3 설정 - PA2(IN2), PA3(IN3)
-	ADC3->CR1 &= ~ ADC_CR1_AWDCH_Msk; 
-	ADC3->CR2 &=~(ADC_CR2_EXTEN_Msk | ADC_CR2_EXTSEL_Msk);
-	ADC3->CR2 |= (0x3<<ADC_CR2_EXTSEL_Pos);
 	
-	ADC3->SQR1 &= ~ ADC_SQR1_L; // 1개 변환 (L=0) -> PA2에서만 변환
-	ADC3->SQR3 = (2U << ADC_SQR3_SQ1_Pos);
-
-
-	// ADC2 인젝티드 그룹: 1개 변환(JL=0), JSQ4에 CH7(PA7, 쓰로틀) 지정
-	ADC2->JSQR &= ~ADC_JSQR_JL;
-	ADC2->JSQR |= (0x7U<<ADC_JSQR_JSQ4_Pos);
-
+	// ---- 쓰로틀 (ADC2, PA7) : regular, 10ms마다 소프트웨어 트리거 ----
+	ADC2->CR2 &= ~(ADC_CR2_EXTEN_Msk | ADC_CR2_EXTSEL_Msk);
+	ADC2->SQR1 &= ~ ADC_SQR1_L_Msk; 							// L=0, 1개 변환
+	ADC2->SQR3 = (7U << ADC_SQR3_SQ1_Pos);   					//채널 7
 
 	// ADC 활성화
 	ADC1->CR2 |= ADC_CR2_ADON;

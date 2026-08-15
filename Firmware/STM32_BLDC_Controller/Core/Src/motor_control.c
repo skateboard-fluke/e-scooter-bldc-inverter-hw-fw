@@ -180,9 +180,9 @@ static inline void Motor_ReadADC(void)
 {
 
 	// ★ while 대기 및 SWSTART 제거 (대기 시간 0)
-	int32_t ias_raw = ADC1->DR;
-	int32_t ibs_raw = ADC2->DR;
-	uint32_t ics_raw = ADC3->DR;
+	int32_t ias_raw = ADC1->JDR1;
+	int32_t ibs_raw = ADC2->JDR1;
+	int32_t ics_raw = ADC3->JDR1;
 
 	// PA0(ias) 읽기 - ADC1
 	ias_Cal = ((float)(ias_raw - ias_Offset)*ADC_VREF/ADC_FS - OFFSET_Volt)/OPAMP_GAIN;
@@ -206,14 +206,14 @@ static inline void Motor_ReadADC(void)
 void Read_Throttle_10ms(void)
 {
 	// 1. 인젝티드 변환 시작 (DR 레지스터/ibs 전류 측정에 영향 0%)
-	ADC2->CR2 |= ADC_CR2_JSWSTART;
+	ADC2->CR2 |= ADC_CR2_SWSTART;
 	
 	// 2. 인젝티드 변환 완료 대기 (main 루프에서 동작하므로 모터 제어에 영향 없음)
-	while(!(ADC2->SR & ADC_SR_JEOC));
-	ADC2->SR &= ~ ADC_SR_JEOC_Msk;
+	while(!(ADC2->SR & ADC_SR_EOC));
+	ADC2->SR &= ~ ADC_SR_EOC_Msk;
 
 	// 3. JDR1 (인젝티드 전용 데이터 레지스터)에서 가져옴
-	uint32_t throttle_raw = ADC2->JDR1;
+	uint32_t throttle_raw = ADC2->DR;
 	Throttle_ADC = (float) throttle_raw*3.3f/4095.0f;
 
 }
@@ -379,24 +379,22 @@ void Motor_SetCurrentOffset(void)
 	for(int i =0; i<10; i++)
 	{
 		// PA0(ias) 읽기 - ADC1
-		ADC1->SQR3 &= ~ADC_SQR3_SQ1_Msk; // SQ1 = 0 채널 0
-		ADC1->CR2 |= ADC_CR2_SWSTART;
-		while(!(ADC1->SR & ADC_SR_EOC));
-		ias_Offset += ADC1->DR;
+		ADC1->CR2 |= ADC_CR2_JSWSTART;
+		while(!(ADC1->SR & ADC_SR_JEOC));
+		ADC1->SR &= ~ADC_SR_JEOC_Msk;
+		ias_Offset += ADC1->JDR1;
 
 		// PA1(ibs) 읽기 - ADC2
-		ADC2->SQR3 &= ~ADC_SQR3_SQ1_Msk;
-		ADC2->SQR3 |= ADC_SQR3_SQ1_0; // SQ1 = 1 채널 1
-		ADC2->CR2 |= ADC_CR2_SWSTART;
-		while(!(ADC2->SR & ADC_SR_EOC));
-		ibs_Offset += ADC2->DR;
+		ADC2->CR2 |= ADC_CR2_JSWSTART;
+		while(!(ADC2->SR & ADC_SR_JEOC));
+		ADC2->SR &= ~ ADC_SR_JEOC_Msk;
+		ibs_Offset += ADC2->JDR1;
 
 		// PA0(ics) 읽기 - ADC3
-		ADC3->SQR3 &= ~ADC_SQR3_SQ1_Msk;
-		ADC3->SQR3 |= ADC_SQR3_SQ1_1; // SQ1 = 2 채널 2
-		ADC3->CR2 |= ADC_CR2_SWSTART;
-		while(!(ADC3->SR & ADC_SR_EOC));
-		ics_Offset += ADC3->DR;
+		ADC3->CR2 |= ADC_CR2_JSWSTART;
+		while(!(ADC3->SR & ADC_SR_JEOC));
+		ADC3->SR &= ~ ADC_SR_JEOC_Msk;
+		ics_Offset += ADC3->JDR1;
 
 	}
 	ias_Offset = (ias_Offset/10) - 2048;
@@ -410,10 +408,10 @@ void Motor_SetCurrentOffset(void)
 	else
 	{
 		InitCal = 1;
-		// 오프셋 측정이 끝난 여기서 하드웨어 트리거(EXTEN)를 활성화
-        ADC1->CR2 |= (0x1U << ADC_CR2_EXTEN_Pos);
-        ADC2->CR2 |= (0x1U << ADC_CR2_EXTEN_Pos);
-        ADC3->CR2 |= (0x1U << ADC_CR2_EXTEN_Pos);
+		// 오프셋 측정이 끝난 여기서 하드웨어 트리거(JEXTEN)를 활성화
+        ADC1->CR2 |= (0x1U << ADC_CR2_JEXTEN_Pos);
+        ADC2->CR2 |= (0x1U << ADC_CR2_JEXTEN_Pos);
+        ADC3->CR2 |= (0x1U << ADC_CR2_JEXTEN_Pos);
 	}
 }
 
