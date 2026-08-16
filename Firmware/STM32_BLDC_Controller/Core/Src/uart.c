@@ -8,6 +8,7 @@
 
 #define USART_OK 	1
 #define USART_ERROR 0
+extern float ias;
 
 void AT09_Init(void) // BT
 {
@@ -24,10 +25,9 @@ void AT09_Init(void) // BT
 	GPIOD->MODER |= 0x2U<<GPIO_MODER_MODER9_Pos; // AF mode
 
 
-	GPIOD->AFR[1] &= ~(0xFU<<GPIO_AFRH_AFRH0_Pos);
-	GPIOD->AFR[1] &= ~(0xFU<<GPIO_AFRH_AFRH1_Pos);
-	GPIOD->AFR[1] |= 0x7U<<GPIO_AFRH_AFRH0_Pos;
-	GPIOD->AFR[1] |= 0x7U<<GPIO_AFRH_AFRH1_Pos;
+	// 3. AF7 (USART3) 매핑 (비트 위치 0, 4)
+    GPIOD->AFR[1] &= ~((0xFU << 0) | (0xFU << 4));
+    GPIOD->AFR[1] |=  ((0x7U << 0) | (0x7U << 4));
 
 	// High Speed 및 Pull
 	GPIOD->OSPEEDR |= (0x3U<<GPIO_OSPEEDER_OSPEEDR8_Pos | 0x3U<<GPIO_OSPEEDER_OSPEEDR9_Pos);
@@ -43,13 +43,16 @@ void AT09_Init(void) // BT
 	// Baud Rate 9600bps @ APB1=54MHz -> BRR = 5625
 	USART3->BRR = 5625;
 
-	NVIC_EnableIRQ(USART3_IRQn);
+	
 
 	// TE=1 RE=1 UE=1
-	USART3->CR1 |= (USART_CR1_TE | USART_CR1_RE | USART_CR1_UE | USART_CR1_RXNEIE);
+	USART3->CR1 |= (USART_CR1_TE | USART_CR1_RE | USART_CR1_UE);
+    USART3->CR1 |= USART_CR1_RXNEIE;
 	// TE : Transmitter Enable
 	// RE : Receive Enable
 	// UE : USART Enable
+
+    NVIC_EnableIRQ(USART3_IRQn);
 
 }
 
@@ -158,8 +161,8 @@ void Bluetooth_Send_Telemetry_500ms(void)
 	USART3_SendString("\n");
     Delay_ms(30);
     
-    USART3_SendString("HallSum :");
-	USART3_SendFloat_Simple(HallSum, 1);
+    USART3_SendString("ias :");
+	USART3_SendFloat_Simple(ias, 1);
 	USART3_SendString("\n");
     Delay_ms(30);
 

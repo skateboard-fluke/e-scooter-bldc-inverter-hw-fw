@@ -46,13 +46,13 @@ void Initialize_PWM(void)/*Initialize TIM1 for PWM*/
 
 
 	TIM1->CCMR1 =
-				(0x1<<3) | // OC1PE
-				(0x7<<4) | // OC1M -> PWM MODE2
-				(0x1<<11)| // OC2PE
-				(0x7<<12); // OC2M -> PWM MODE2
+				(0x1<<TIM_CCMR1_OC1PE_Pos) | // OC1PE
+				(0x7<<TIM_CCMR1_OC1M_Pos) | // OC1M -> PWM MODE2
+				(0x1<<TIM_CCMR1_OC2PE_Pos)| // OC2PE
+				(0x7<<TIM_CCMR1_OC2M_Pos); // OC2M -> PWM MODE2
 	TIM1->CCMR2 =
-				(0x1<<3) | // OC3PE
-				(0x7<<4) ; // OC3M -> PWM MODE2
+				(0x1<<TIM_CCMR2_OC3PE_Pos) | // OC3PE
+				(0x7<<TIM_CCMR2_OC3M_Pos) ; // OC3M -> PWM MODE2
 
 
 	// OC4M = PWM Mode 1 (110), OC4PE = 1
@@ -61,16 +61,16 @@ void Initialize_PWM(void)/*Initialize TIM1 for PWM*/
 	TIM1->CCER |= TIM_CCER_CC4E;
 	
 	TIM1->CCER |=
-				(0x1<<0) | // CC1E
-	            (0x1<<2) | // CC1NE
-	            (0x1<<4) | // CC2E
-	            (0x1<<6) | // CC2NE
-	            (0x1<<8) | // CC3E
-	            (0x1<<10); // CC3NE
+				TIM_CCER_CC1E | // CC1E
+	            TIM_CCER_CC1NE | // CC1NE
+	            TIM_CCER_CC2E | // CC2E
+	            TIM_CCER_CC2NE | // CC2NE
+	            TIM_CCER_CC3NE | // CC3E
+	            TIM_CCER_CC3NE; // CC3NE
 	TIM1->BDTR =
-				(0x1<<12) | // BKE = 1
-				(0x1<<11) | // OSSR = 1
-				(0x1<<10) ; // OSSI = 1
+				//TIM_BDTR_BKE | // BKE = 1
+				TIM_BDTR_OSSR | // OSSR = 1
+				TIM_BDTR_OSSI ; // OSSI = 1
 
 	TIM1->BDTR |= TIM_BDTR_MOE | DEADTIME_1us;
 	TIM1->DIER = 0x1; // enable update interrupt
@@ -119,8 +119,12 @@ void Disable_PWM(void)
 
 void Start_TIM1_Control_Interrupt(void)
 {
-    NVIC->ISER[0] |= 0x02000000;        // TIM1 Update Interrupt 활성화 (IRQ 25)
-    while (!(TIM1->CR1 & 0x0010));      // TIM1 언더플로우 동기화 대기
-    TIM1->RCR = 0x0001;                 // 100us 주기 업데이트 (RCR = 1)
-}
+    // 1. TIM1 모듈의 Update Interrupt 활성화 (타이머 레벨)
+    TIM1->DIER |= TIM_DIER_UIE;
 
+    // 2. NVIC 인터럽트 활성화 (Cortex-M 코어 레벨)
+    // CMSIS 표준 함수 사용 권장 (TIM1_UP_TIM10_IRQn 등 사용 칩셋에 맞는 번호)
+    NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn); // 또는 NVIC->ISER[0] |= (1UL << 25);
+
+    // [위험한 while문은 삭제합니다]
+}

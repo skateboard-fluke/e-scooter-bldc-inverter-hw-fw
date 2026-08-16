@@ -30,6 +30,6 @@ void USART2_SendString(const char*str);
 char USART2_ReceiveChar(void);
 void USART2_SendFloat_Simple(float value, int decimals);
 void USART2_Send_Rpm_Plot_10ms(void);
-
+void USART3_SendString(const char *str);
 
 #endif /* INC_UART_H_ */

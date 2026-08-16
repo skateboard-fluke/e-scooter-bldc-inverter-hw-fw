@@ -8,16 +8,14 @@
 #include "Hall.h"
 
 
-uint32_t ccr_a =0;
-uint32_t ccr_b =0;
-uint32_t ccr_c =0;
+uint32_t ccr_val = 0;
 unsigned int dir = 1;
 
 uint8_t HA = 0;
 uint8_t HB = 0;
 uint8_t HC = 0;
 uint8_t HallSum = 0;
-uint8_t StartFlg = 0;  // UART에서 수신한 Start/Stop 명령 플래그
+uint8_t StartFlg = 1;  // UART에서 수신한 Start/Stop 명령 플래그
 static const float Edges_per_Revolution = HALL_EDGES_PER_REV;
 
 volatile uint32_t last_hall_cnt = 0;
@@ -64,143 +62,89 @@ void Initialize_Hall_Sensors(void)
 
 void Update_Switching_Pattern(uint8_t Hall_Sum)
 {
-	if(dir==1)//시계방향
-	{
-		switch(Hall_Sum)
-		{
-		case 6:
-			// 상태 1
-			Set_Phases(0, -1, 1);
-			break;
-		case 4:
-			// 상태 2
-			Set_Phases(-1, 0, 1);
-			break;
-		case 5:
-			// 상태 3
-			Set_Phases(-1, 1, 0);
-			break;
-		case 1:
-			// 상태 4
-			Set_Phases(0, 1, -1);
-			break;
-		case 3:
-			// 상태 5
-			Set_Phases(1, 0, -1);
-			break;
-		case 2:
-			// 상태 6
-			Set_Phases(1, -1, 0);
-			break;
-		default:
-			// 모든 단계 비활성화
-			Set_Phases(0,0,0);
-			break;
+    if (dir == 1) // 시계 방향 (CW)
+    {
+    	switch(HallSum){
+			case 6: Set_Phases( 0, -1, 1); break;
+			case 4: Set_Phases(-1, 0, 1); break;
+			case 5: Set_Phases(-1, 1, 0); break;
+			case 1: Set_Phases( 0, 1, -1); break;
+			case 3: Set_Phases( 1, 0, -1); break;
+			case 2: Set_Phases( 1, -1, 0); break;
+			default: Set_Phases(0,0,0); break;
 		}
-
-	}
-	else
-	{
-		switch(Hall_Sum)//반시계 방향
-		{
-		case 5:
-			// 상태 1: A 상승, B & C 낮음
-			Set_Phases(0, 1, -1);
-			break;
-		case 3:
-			// 상태 2: B 상승, A & C 낮음
-			Set_Phases(1, -1, 0);
-			break;
-		case 1:
-			// 상태 3: A 하강, B 상승, C 낮음
-			Set_Phases(1, 0, -1);
-			break;
-		case 6:
-			// 상태 4: C 상승, A & B 낮음
-			Set_Phases(-1, 0, 1);
-			break;
-		case 4:
-			// 상태 5: A 상승, B 낮음, C 하강
-			Set_Phases(-1, 1, 0);
-			break;
-		case 2:
-			// 상태 6: B 하강, A 낮음, C 상승
-			Set_Phases(0, -1, 1);
-			break;
-		default:
-			// 모든 단계 비활성화
-			Set_Phases(0, 0, 0);
-			break;
+    }
+    else // 반시계 방향 (CCW) - 동일 case 번호에서 부호만 반전
+    {
+        switch(HallSum){
+			case 6: Set_Phases( 0, 1, -1); break;
+			case 4: Set_Phases(1, 0, -1); break;
+			case 5: Set_Phases(1, -1, 0); break;
+			case 1: Set_Phases( 0, -1, 1); break;
+			case 3: Set_Phases( -1, 0, 1); break;
+			case 2: Set_Phases( -1, 1, 0); break;
+			default: Set_Phases(0,0,0); break;
 		}
-	}
+    }
 }
 
 
 void Set_Phases(int32_t phaseA, int32_t phaseB, int32_t phaseC)
 {
 	//PhaseA 설정
-	if(voltage_ref ==0 || MotorRunEnable==0)
+	if(MotorRunEnable==0)
 	{
 		Disable_PWM();
 		return;
 	}
 
-	ccr_a = CNT_MAX - voltage_ref;
-	ccr_b = CNT_MAX - voltage_ref;
-	ccr_c = CNT_MAX - voltage_ref;
+	Enable_PWM();
+
+	ccr_val = CNT_MAX - voltage_ref;
+	
+	
+	uint32_t ccer = TIM1->CCER & ~(
+									TIM_CCER_CC1E | TIM_CCER_CC1NE |
+									TIM_CCER_CC2E | TIM_CCER_CC2NE |
+									TIM_CCER_CC3E | TIM_CCER_CC3NE);
 
 	//Phase A 설정
 	if(phaseA==1) // PWM MODE 2
 	{
-		TIM1->CCR1 = ccr_a;
-		TIM1->CCMR1 &= ~(TIM_CCMR1_OC1M_Msk);
-		TIM1->CCMR1 |= (0x7U<<TIM_CCMR1_OC1M_Pos);
-	}else if(phaseA==-1)
+		TIM1->CCR1 = ccr_val;
+		ccer |= TIM_CCER_CC1E;
+	}else if(phaseA == -1)
 	{
-		TIM1->CCMR1 &= ~(TIM_CCMR1_OC1M_Msk);
-		TIM1->CCMR1 |= (0x5U<<TIM_CCMR1_OC1M_Pos);
-	}
-	else
-	{
-		TIM1->CCMR1 &= ~(TIM_CCMR1_OC1M_Msk);
-		TIM1->CCMR1 |= (0x4U<<TIM_CCMR1_OC1M_Pos);
+		TIM1->CCR1 = CNT_MAX + 1;
+		ccer |= TIM_CCER_CC1NE;
 	}
 
 	//Phase B 설정
 	if(phaseB == 1)
 	{
-		TIM1->CCR2 = ccr_b;
-		TIM1->CCMR1 &= ~(TIM_CCMR1_OC2M_Msk);
-		TIM1->CCMR1 |= (0x7U<<TIM_CCMR1_OC2M_Pos);
+		TIM1->CCR2 = ccr_val;
+		ccer |= TIM_CCER_CC2E;
 	}
 	else if(phaseB == -1)
 	{
-		TIM1->CCMR1 &= ~(TIM_CCMR1_OC2M_Msk);
-		TIM1->CCMR1 |= (0x5U<<TIM_CCMR1_OC2M_Pos);
+		TIM1->CCR2 = CNT_MAX + 1;
+		ccer |= TIM_CCER_CC2NE;
 	}
-	else
-	{
-		TIM1->CCMR1 &= ~(TIM_CCMR1_OC2M_Msk);
-		TIM1->CCMR1 |= (0x4U<<TIM_CCMR1_OC2M_Pos);
-	}
-
+	
 	//Phase C 설정
 	if(phaseC==1)
 	{
-		TIM1->CCR3 = ccr_c;
-		TIM1->CCMR2	&= ~(TIM_CCMR2_OC3M_Msk);
-		TIM1->CCMR2 |= (0x7U<<TIM_CCMR2_OC3M_Pos);
+		TIM1->CCR3 = ccr_val;
+		ccer |= TIM_CCER_CC3E;
 	}
 	else if(phaseC == -1)
 	{
-		TIM1->CCMR2	&= ~(TIM_CCMR2_OC3M_Msk);
-		TIM1->CCMR2 |= (0x5U<<TIM_CCMR2_OC3M_Pos);
+		TIM1->CCR3 = CNT_MAX + 1;
+		ccer |= TIM_CCER_CC3NE;
 	}
-	else
-	{
-		TIM1->CCMR2	&= ~(TIM_CCMR2_OC3M_Msk);
-		TIM1->CCMR2 |= (0x4U<<TIM_CCMR2_OC3M_Pos);
-	}
+	
+	// 6개 출력 상태를 원자적(Atomic)으로 한 번에 레지스터에 반영
+    TIM1->CCER = ccer;
 }
 
 
@@ -210,6 +154,7 @@ void EXTI0_IRQHandler(void) //PD0 HA
 	{
 		EXTI->PR = EXTI_PR_PR0; //인터럽트 플래그 클리어
 		Update_Hall_Sequence();
+		Motor_UpdateInverterOutput();
 		SpeedCal();
 	}
 }
@@ -220,6 +165,7 @@ void EXTI1_IRQHandler(void) //PD1 HB
 	{
 		EXTI->PR = EXTI_PR_PR1; //인터럽트 플래그 클리어
 		Update_Hall_Sequence();
+		Motor_UpdateInverterOutput();
 		SpeedCal();
 	}
 }
@@ -229,6 +175,7 @@ void EXTI2_IRQHandler(void) //PD2 HC
 	{
 		EXTI->PR = EXTI_PR_PR2; //인터럽트 플래그 클리어
 		Update_Hall_Sequence();
+		Motor_UpdateInverterOutput();
 		SpeedCal();
 	}
 }

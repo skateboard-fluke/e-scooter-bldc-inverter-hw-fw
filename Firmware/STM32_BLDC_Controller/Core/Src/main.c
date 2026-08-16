@@ -46,34 +46,37 @@ int main(void)
         if (Task_1sFlg)    { Task_1sFlg = 0; Task_1s(); }
 
         
-        if(USART2_CmdReadyFlg)
-        {
-            USART2_CmdReadyFlg = 0;
-            if(strcmp((char*)(usart2_rx_buf), "Start")==0)
-            {
-                StartFlg = 1;
-                USART2_SendString("PC: Start Command Received!\r\n");
-            }
-            else if(strcmp((char*)usart2_rx_buf, "Stop")==0)
-            {
-                StartFlg = 0;
-                USART2_SendString("PC: Motor Stop!\r\n ");
-            }
-            else if(strcmp((char*)usart2_rx_buf, "SpeedMode")==0)
-            {
-                if(StartFlg == 1)
-                {
-                    SpdFlg = 1;
-                    USART2_SendString("PC: Speed Mode!\r\n");
-                }
-                else
-                {
-                    USART2_SendString("PC: Start motor first!\r\n");
-                }
+        // if(USART2_CmdReadyFlg)
+        // {
+        //     USART2_CmdReadyFlg = 0;
+        //     if(strcmp((char*)(usart2_rx_buf), "Start")==0)
+        //     {
+        //         StartFlg = 1;
+        //         USART2_SendString("PC: Start Command Received!\r\n");
+        //     }
+        //     else if(strcmp((char*)usart2_rx_buf, "Stop")==0)
+        //     {
+        //         StartFlg = 0;
+        //         USART2_SendString("PC: Motor Stop!\r\n ");
+        //     }
+        //     else if(strcmp((char*)usart2_rx_buf, "SpeedMode")==0)
+        //     {
+        //         if(StartFlg == 1)
+        //         {
+        //             SpdFlg = 1;
+        //             USART2_SendString("PC: Speed Mode!\r\n");
+        //         }
+        //         else
+        //         {
+        //             USART2_SendString("PC: Start motor first!\r\n");
+        //         }
 
-            }
-        }
+        //     }
+        // }
 
+
+        
+       
     
         // 모터 구동 상태 변경 감지 (엣지 트리거 방식)
         if (StartFlg != prev_StartFlg)
@@ -94,5 +97,6 @@ int main(void)
 
        
         
+    
     }
 }

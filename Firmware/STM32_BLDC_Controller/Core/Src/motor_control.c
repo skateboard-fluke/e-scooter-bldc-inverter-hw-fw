@@ -48,11 +48,11 @@ float ThrottleRef_Ramp = 0.0f;
 
 uint32_t FltCnt = 0;
 uint8_t ThrottleActive = 0;
-uint8_t InitCal = 0;
+uint8_t InitCal = 1;
 uint32_t Tim1TestCnt = 0;
 
 
-uint8_t SpdFlg = 0;
+uint8_t SpdFlg = 1;
 
 float Fi = 0.0f;
 float Ft = 0.0f;
@@ -307,17 +307,12 @@ void Motor_UpdateInverterOutput(void)
 {
 	if(FltFlg ==0 && InitCal ==1)
 	{
-		__disable_irq();
-		uint8_t Hall_Snapshot = HallSum; // 홀 센서 상태를 스냅샷으로 저장
-		__enable_irq();
-		Update_Switching_Pattern(Hall_Snapshot);
+		Update_Switching_Pattern(HallSum);
 	}
 	else
 	{
 		voltage_ref = 0;
-		ccr_a = 0;
-		ccr_b = 0;
-		ccr_c = 0;
+		ccr_val = 0;
 		//PWM 완전 차단
 		TIM1->CCR1 = 0;
 		TIM1->CCR2 = 0;

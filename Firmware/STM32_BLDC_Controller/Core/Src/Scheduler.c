@@ -33,6 +33,7 @@ void SysTick_Init(void)
 					SysTick_CTRL_CLKSOURCE_Msk |	// 프로세서 클록(216Mhz) 사용
 					SysTick_CTRL_TICKINT_Msk |		// 인터럽트 활성화
 					SysTick_CTRL_ENABLE_Msk;		// 카운터 Enable
+	__enable_irq();
 }
 
 
@@ -47,7 +48,6 @@ void Delay_ms(uint32_t ms)
 void Task_1ms(void)
 {
 	Motor_Control_PI_1ms();
-	Motor_UpdateInverterOutput();
 	Motor_UpdateControlOutput();
 	
 }
@@ -113,7 +113,7 @@ void Scheduler(void)
 		Task_1sFlg = 1;
 	}
 
-}
+	}
 
 
 

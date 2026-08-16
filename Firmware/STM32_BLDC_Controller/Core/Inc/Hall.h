@@ -13,9 +13,7 @@
 #include "config.h"
 #include "motor_control.h"
 
-extern uint32_t ccr_a;
-extern uint32_t ccr_b;
-extern uint32_t ccr_c;
+extern uint32_t ccr_val;
 extern unsigned int dir;
 extern uint8_t StartFlg;
 extern volatile uint32_t voltage_ref;
