@@ -9,6 +9,7 @@
 #define INC_UART_H_
 #include "stm32f7xx.h"
 #include "motor_control.h"
+#include "Scheduler.h"
 
 extern volatile char usart2_rx_buf[64];
 extern volatile uint8_t USART2_CmdReadyFlg;

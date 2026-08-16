@@ -37,27 +37,18 @@ void System_Monitor_Check_10ms(void)
 	 Vdc = (float)result*(ADC_VREF/ADC_FS) / VDIV_RATIO;
 
 
+	 if(FltFlg != 0)return;
+
 	 // 온도, 전압 기반 폴트 처리
-	 if(Vdc < 32.0f)
+	 if(Vdc < 18.0f)
 	 {
 		 FltFlg = 3; // 저전압 감지, 인휠모터 구동 시 주석 해제
 	 }
-	 else
-	 {
-		 //do nothing
-	 }
-	 if(MosfetTemp > 100.0f)
+	 else if(MosfetTemp > 100.0f)
 	 {
 		 FltFlg = 2; // 과열 감지
 	 }
-	 else if(MosfetTemp < 90.0f && FltFlg==2)
-	 {
-		 FltFlg =0; // 온도가 정상이면 폴트 클리어
-	 }
-	 else
-	 {
-		 //do nothing
-	 }
+	 
 
 
 }

@@ -83,7 +83,7 @@ void Initialize_PWM(void)/*Initialize TIM1 for PWM*/
 
 
 
-void Initialize_TIM2(void)
+void Initialize_TIM2(void)/*Initialize TIM2 for Rpm Calculation*/
 {
 	//TIM2 clock 활성화
 	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;

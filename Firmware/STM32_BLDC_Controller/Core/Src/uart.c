@@ -131,22 +131,43 @@ void USART3_SendFloat_Simple(float value, int decimals)
 
 void Bluetooth_Send_Telemetry_500ms(void)
 {
-	// 블루투스 송신
-	// USART3_SendString("Spd :");
-	// USART3_SendFloat_Simple(speed_km_h, 1);
-	// USART3_SendString("\n");
-
+	
 	USART3_SendString("Vdc :");
 	USART3_SendFloat_Simple(Vdc, 1);
 	USART3_SendString("\n");
+    Delay_ms(30);
 
 	USART3_SendString("MosfetTemp :");
 	USART3_SendFloat_Simple(MosfetTemp, 1);
 	USART3_SendString("\n");
+    Delay_ms(30);
+
 
 	USART3_SendString("Flt :");
-	USART3_SendChar(FltFlg+48);
+	USART3_SendChar(FltFlg+'0');
 	USART3_SendString("\n");
+    Delay_ms(30);
+
+    USART3_SendString("Throttle :");
+	USART3_SendFloat_Simple(Throttle_ADC, 1);
+	USART3_SendString("\n");
+    Delay_ms(30);
+
+    USART3_SendString("MotorRunEnable :");
+	USART3_SendFloat_Simple(MotorRunEnable, 1);
+	USART3_SendString("\n");
+    Delay_ms(30);
+    
+    USART3_SendString("HallSum :");
+	USART3_SendFloat_Simple(HallSum, 1);
+	USART3_SendString("\n");
+    Delay_ms(30);
+
+    USART3_SendString("voltage_ref :");
+	USART3_SendFloat_Simple(voltage_ref, 1);
+	USART3_SendString("\n");
+
+
 }
 
 
@@ -274,6 +295,19 @@ void USART2_Send_Rpm_Plot_10ms(void)
 	USART2_SendString(">RpmFdb:");
 	USART2_SendFloat_Simple(motor_speed_rpm, 1);
 	USART2_SendString("\n");
+
+    USART2_SendString("CCR1:");
+	USART2_SendFloat_Simple(TIM1->CCR1, 1);
+	USART2_SendString("\n");
+
+    USART2_SendString("CCR2:");
+	USART2_SendFloat_Simple(TIM1->CCR2, 1);
+	USART2_SendString("\n");
+
+    USART2_SendString("CCR3:");
+	USART2_SendFloat_Simple(TIM1->CCR3, 1);
+	USART2_SendString("\n");
+
 }
 
 

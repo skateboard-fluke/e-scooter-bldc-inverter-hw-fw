@@ -14,7 +14,7 @@ float RpmErr = 0.0f;
 float Pterm = 0.0f;
 float Iterm = 0.0f;
 float PIterm = 0.0f;
-float Kp = 0.0f;
+float Kp = 0.2f;
 float Ki = 0.0f;
 volatile float motor_speed_rpm = 0.0f;
 uint8_t MotorRunEnable = 1;
@@ -205,14 +205,14 @@ static inline void Motor_ReadADC(void)
 
 void Read_Throttle_10ms(void)
 {
-	// 1. 인젝티드 변환 시작 (DR 레지스터/ibs 전류 측정에 영향 0%)
+	
 	ADC2->CR2 |= ADC_CR2_SWSTART;
 	
-	// 2. 인젝티드 변환 완료 대기 (main 루프에서 동작하므로 모터 제어에 영향 없음)
+	// 2. 변환 완료 대기 (main 루프에서 동작하므로 모터 제어에 영향 없음)
 	while(!(ADC2->SR & ADC_SR_EOC));
 	ADC2->SR &= ~ ADC_SR_EOC_Msk;
 
-	// 3. JDR1 (인젝티드 전용 데이터 레지스터)에서 가져옴
+	// 3. DR에서 가져옴
 	uint32_t throttle_raw = ADC2->DR;
 	Throttle_ADC = (float) throttle_raw*3.3f/4095.0f;
 
@@ -261,11 +261,11 @@ static inline void Motor_ProcessSpeed(void)
 static inline void Motor_ProcessThrottleCommand(void)
 {
 	// 히스테리시스를 주어 쓰로틀 신호 제어
-	if(Throttle_ADC < THROTTLE_OFF)
+	if(Throttle_ADC < THROTTLE_OFF_V)
 	{
 		ThrottleActive = 0;
 	}
-	else if(Throttle_ADC > THROTTLE_ON)
+	else if(Throttle_ADC > THROTTLE_ON_V)
 	{
 		ThrottleActive = 1;
 	}
@@ -278,19 +278,18 @@ static inline void Motor_ProcessThrottleCommand(void)
 	}
 	else
 	{
+		float ratio = (Throttle_ADC - THROTTLE_OFF_V)/(THROTTLE_MAX_V - THROTTLE_OFF_V);
+
+		if(ratio < 0.0f) ratio = 0.0f;
+		if(ratio > 1.0f) ratio = 1.0f;
 		if(SpdFlg == 1)
 		{
-			float ratio = (Throttle_ADC - THROTTLE_OFF)/(3.3f - THROTTLE_OFF);
-
-			if(ratio < 0.0f) ratio=0.0f;
-			if(ratio > 1.0f) ratio = 1.0f;
-
 			RpmRef = MIN_RUN_RPM + ratio*(MAX_RPM_TARGET - MIN_RUN_RPM);
 
 		}
 		else if(SpdFlg==0)
 		{
-			ThrottleRef = Throttle_ADC * 3400.0f - 3540.0f + 1000.0f; // 0826 듀티값 변경
+			ThrottleRef =  DUTY_MIN_TARGET + ratio * (DUTY_MAX_TARGET - DUTY_MIN_TARGET);
 		}
 	}
 

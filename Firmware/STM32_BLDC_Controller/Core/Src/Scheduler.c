@@ -36,6 +36,13 @@ void SysTick_Init(void)
 }
 
 
+void Delay_ms(uint32_t ms)
+{
+	uint32_t start = msTicks;
+	while((msTicks-start)< ms);
+}
+
+
 
 void Task_1ms(void)
 {

@@ -20,6 +20,7 @@ void Task_10ms(void);
 void Task_100ms(void);
 void Task_500ms(void);
 void Task_1s(void);
+void Delay_ms(uint32_t ms);
 
 extern volatile uint8_t Task_1msFlg;
 extern volatile uint8_t Task_10msFlg;

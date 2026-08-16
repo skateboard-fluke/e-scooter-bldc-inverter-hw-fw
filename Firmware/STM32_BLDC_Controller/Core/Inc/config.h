@@ -38,8 +38,12 @@
 #define OFFSET_Volt 1.65f
 #define OPAMP_GAIN 0.044f
 // ---------- Thresholds ----------
-#define THROTTLE_OFF 1.00f
-#define THROTTLE_ON 1.05f
+#define THROTTLE_OFF_V 0.10f
+#define THROTTLE_ON_V 0.20f
+#define THROTTLE_MAX_V 1.55f
+
+#define DUTY_MIN_TARGET 1000.0f
+#define DUTY_MAX_TARGET 4000.0f
 
 #define OC_LEVEL 35.0f
 #define OC_TRIP_COUNT 50 // 2.5ms@20kHz 예시
